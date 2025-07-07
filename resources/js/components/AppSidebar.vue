@@ -1,11 +1,10 @@
 <script setup lang="ts">
-import NavFooter from '@/components/NavFooter.vue';
 import NavMain from '@/components/NavMain.vue';
 import NavUser from '@/components/NavUser.vue';
 import { Sidebar, SidebarContent, SidebarFooter, SidebarHeader, SidebarMenu, SidebarMenuButton, SidebarMenuItem } from '@/components/ui/sidebar';
 import { type NavItem } from '@/types';
 import { Link, usePage } from '@inertiajs/vue3';
-import { BookOpen, Folder, LayoutGrid, Calendar, FileText, User, Users, DollarSign } from 'lucide-vue-next';
+import { Folder, LayoutGrid, Calendar, FileText, Users, DollarSign } from 'lucide-vue-next';
 import AppLogo from './AppLogo.vue';
 import { usePrescriptionBlink } from '@/composables/usePrescriptionBlink';
 import { useAppointmentBlink } from '@/composables/useAppointmentBlink';

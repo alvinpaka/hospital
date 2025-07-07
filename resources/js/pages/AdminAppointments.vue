@@ -1,12 +1,12 @@
 <script setup lang="ts">
 import AppLayout from '@/layouts/AppLayout.vue';
 import { type BreadcrumbItem } from '@/types';
-import { Head, usePage, Link, router } from '@inertiajs/vue3';
+import { Head, usePage, router } from '@inertiajs/vue3';
 import { computed, ref } from 'vue';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuLabel, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from '@/components/ui/table';
 import { Input } from '@/components/ui/input';
@@ -19,7 +19,6 @@ const breadcrumbs: BreadcrumbItem[] = [
 ];
 
 const page = usePage();
-const user = computed(() => page.props.user);
 const appointments = computed(() => page.props.appointments || []);
 const staff = computed(() => page.props.staff || []);
 
@@ -128,10 +127,6 @@ const pendingAppointments = computed(() =>
 
 const confirmedAppointments = computed(() => 
     appointments.value.filter(a => a.status === 'confirmed')
-);
-
-const canceledAppointments = computed(() => 
-    appointments.value.filter(a => a.status === 'canceled')
 );
 </script>
 

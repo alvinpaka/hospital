@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import AppLayout from '@/layouts/AppLayout.vue';
 import { Head, Link, router, usePage } from '@inertiajs/vue3';
-import { ref, computed, watch } from 'vue';
+import { ref, computed } from 'vue';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -26,8 +26,6 @@ const form = ref({
     { description: '', quantity: 1, unit_price: 0 }
   ],
 });
-
-const errors = computed(() => page.props.errors || {});
 
 function addItem() {
   form.value.items.push({ description: '', quantity: 1, unit_price: 0 });

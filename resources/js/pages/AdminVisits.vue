@@ -167,7 +167,7 @@ async function handleEdit() {
         editLoading.value = false;
       },
     });
-  } catch (e) {
+  } catch {
     toast.error('Unexpected error');
     editLoading.value = false;
   }
@@ -200,7 +200,7 @@ async function handleAssign() {
         assignLoading.value = false;
       },
     });
-  } catch (e) {
+  } catch {
     toast.error('Unexpected error');
     assignLoading.value = false;
   }
@@ -220,7 +220,7 @@ async function handleDelete() {
     toast.success('Visit deleted');
     showDeleteDialog.value = false;
     allVisits.value = allVisits.value.filter(v => v.id !== selectedVisit.value?.id);
-  } catch (e) {
+  } catch {
     toast.error('Failed to delete visit');
   } finally {
     deleteLoading.value = false;
@@ -242,105 +242,12 @@ function openAssignDialog(visit: Visit) {
 function openExportDialog() {
   showExportDialog.value = true;
 }
-function openSummaryDialog(text: string) {
-  summaryDialogText.value = text;
-  showSummaryDialog.value = true;
-}
 function closeSummaryDialog() {
   showSummaryDialog.value = false;
   summaryDialogText.value = '';
 }
-function truncateSummary(text: string, maxLength = 40) {
-  if (!text) return '';
-  return text.length > maxLength ? text.slice(0, maxLength) + '...' : text;
-}
-
-// Dummy handlers for actions (to be implemented)
-function handleExportCSV() { showExportDialog.value = false; }
-function handleExportExcel() { showExportDialog.value = false; }
-
-const selectedIds = ref<number[]>([]);
-const allSelected = computed(() => selectedIds.value.length === paginatedVisits.value.length && paginatedVisits.value.length > 0);
-function toggleSelectAll() {
-  if (allSelected.value) {
-    selectedIds.value = [];
-  } else {
-    selectedIds.value = paginatedVisits.value.map(r => r.id);
-  }
-}
-function toggleSelect(id: number) {
-  if (selectedIds.value.includes(id)) {
-    selectedIds.value = selectedIds.value.filter(i => i !== id);
-  } else {
-    selectedIds.value.push(id);
-  }
-}
-function clearSelection() { selectedIds.value = []; }
 
 // Bulk actions
-const showBulkAssignDialog = ref(false);
-const showBulkDeleteDialog = ref(false);
-const bulkAssignForm = useForm({ doctor: '' });
-const bulkAssignLoading = ref(false);
-const bulkDeleteLoading = ref(false);
-function openBulkAssignDialog() { showBulkAssignDialog.value = true; bulkAssignForm.doctor = ''; }
-function openBulkDeleteDialog() { showBulkDeleteDialog.value = true; }
-async function handleBulkAssign() {
-  bulkAssignLoading.value = true;
-  try {
-    await Promise.all(selectedIds.value.map(id =>
-      bulkAssignForm.post(`/admin/visits/${id}/assign`, {
-        preserveScroll: true,
-        onError: () => {},
-        onFinish: () => {},
-      })
-    ));
-    toast.success('Assigned doctor to selected visits');
-    showBulkAssignDialog.value = false;
-    clearSelection();
-  } catch (e) {
-    toast.error('Bulk assign failed');
-  } finally {
-    bulkAssignLoading.value = false;
-  }
-}
-async function handleBulkDelete() {
-  bulkDeleteLoading.value = true;
-  try {
-    await Promise.all(selectedIds.value.map(id =>
-      fetch(`/admin/visits/${id}`, {
-        method: 'DELETE',
-        headers: { 'X-Requested-With': 'XMLHttpRequest', 'Content-Type': 'application/json' },
-        credentials: 'same-origin',
-      })
-    ));
-    toast.success('Deleted selected visits');
-    allVisits.value = allVisits.value.filter(r => !selectedIds.value.includes(r.id));
-    showBulkDeleteDialog.value = false;
-    clearSelection();
-  } catch (e) {
-    toast.error('Bulk delete failed');
-  } finally {
-    bulkDeleteLoading.value = false;
-  }
-}
-function handleBulkExport() {
-  // Export selected as CSV
-  const selected = allVisits.value.filter(r => selectedIds.value.includes(r.id));
-  let csv = 'ID,Patient,Date,Reason,Doctor,Notes\n';
-  for (const v of selected) {
-    csv += `"${v.id}","${v.patient?.name || ''}","${v.date}","${v.reason}","${v.doctor}","${v.notes?.replace(/"/g, '""') || ''}"\n`;
-  }
-  const blob = new Blob([csv], { type: 'text/csv' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = 'visits_selected.csv';
-  a.click();
-  URL.revokeObjectURL(url);
-  toast.success('Exported selected visits');
-}
-
 const showActivityLog = ref(false);
 const activityLogs = ref([]);
 const activityLoading = ref(false);
@@ -383,7 +290,7 @@ async function fetchActivityLogs() {
   try {
     const res = await fetch('/admin/activity-logs');
     activityLogs.value = await res.json();
-  } catch (e) {
+  } catch {
     toast.error('Failed to load activity logs');
   } finally {
     activityLoading.value = false;

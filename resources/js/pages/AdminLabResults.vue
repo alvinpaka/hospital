@@ -43,9 +43,9 @@ onMounted(() => {
   if (!user.value || user.value.role !== 'admin') return;
   try {
     allLabResults.value = Array.isArray(labResults) ? labResults : [];
-  } catch (err) {
+  } catch {
     error.value = 'Failed to load lab results. Please try again later.';
-    console.error('Error loading lab results:', err);
+    console.error('Error loading lab results:');
   } finally {
     loading.value = false;
   }
@@ -200,7 +200,7 @@ async function handleEdit() {
         editLoading.value = false;
       },
     });
-  } catch (e) {
+  } catch {
     toast.error('Unexpected error');
     editLoading.value = false;
   }
@@ -235,7 +235,7 @@ async function handleAssign() {
         assignLoading.value = false;
       },
     });
-  } catch (e) {
+  } catch {
     toast.error('Unexpected error');
     assignLoading.value = false;
   }
@@ -256,7 +256,7 @@ async function handleDelete() {
     showDeleteDialog.value = false;
     // Remove from local data
     allLabResults.value = allLabResults.value.filter(l => l.id !== selectedLabResult.value?.id);
-  } catch (e) {
+  } catch {
     toast.error('Failed to delete lab result');
   } finally {
     deleteLoading.value = false;
@@ -306,7 +306,7 @@ async function handleBulkAssign() {
     toast.success('Assigned doctor to selected lab results');
     showBulkAssignDialog.value = false;
     clearSelection();
-  } catch (e) {
+  } catch {
     toast.error('Bulk assign failed');
   } finally {
     bulkAssignLoading.value = false;
@@ -326,7 +326,7 @@ async function handleBulkDelete() {
     allLabResults.value = allLabResults.value.filter(r => !selectedIds.value.includes(r.id));
     showBulkDeleteDialog.value = false;
     clearSelection();
-  } catch (e) {
+  } catch {
     toast.error('Bulk delete failed');
   } finally {
     bulkDeleteLoading.value = false;
@@ -392,7 +392,7 @@ async function fetchActivityLogs() {
   try {
     const res = await fetch('/admin/activity-logs');
     activityLogs.value = await res.json();
-  } catch (e) {
+  } catch {
     toast.error('Failed to load activity logs');
   } finally {
     activityLoading.value = false;

@@ -2,7 +2,6 @@
 import AppLayout from '@/layouts/AppLayout.vue';
 import { type BreadcrumbItem } from '@/types';
 import { Head, usePage, Link } from '@inertiajs/vue3';
-import UserInfo from '../components/UserInfo.vue';
 import { computed } from 'vue';
 import VitalsChart from '../components/VitalsChart.vue';
 import LabResultsChart from '../components/LabResultsChart.vue';
@@ -16,7 +15,6 @@ const breadcrumbs: BreadcrumbItem[] = [
 ];
 
 const page = usePage();
-const user = computed(() => page.props.user);
 const nextAppointment = computed(() => page.props.nextAppointment);
 const recentVisit = computed(() => page.props.recentVisit);
 const latestLabResult = computed(() => page.props.latestLabResult);

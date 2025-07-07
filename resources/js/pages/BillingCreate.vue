@@ -5,7 +5,6 @@ import { ref, computed } from 'vue';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Badge } from '@/components/ui/badge';
 import { Calendar } from '@/components/ui/calendar';
 
 const page = usePage();
@@ -20,12 +19,6 @@ const form = ref({
     { description: '', quantity: 1, unit_price: 0 }
   ],
 });
-
-const errors = computed(() => page.props.errors || {});
-
-
-
-
 
 function addItem() {
   form.value.items.push({ description: '', quantity: 1, unit_price: 0 });

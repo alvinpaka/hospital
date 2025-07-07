@@ -11,7 +11,6 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel,
 
 const page = usePage();
 const billings = computed(() => page.props.billings.data || []);
-const patients = computed(() => page.props.billings.data.map(b => b.patient).filter(Boolean));
 
 const statusFilter = ref('');
 const search = ref('');

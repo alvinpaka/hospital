@@ -48,9 +48,9 @@ onMounted(() => {
   if (!user.value || user.value.role !== 'admin') return;
   try {
     allVitals.value = Array.isArray(vitals) ? vitals : [];
-  } catch (err) {
+  } catch {
     error.value = 'Failed to load vitals. Please try again later.';
-    console.error('Error loading vitals:', err);
+    console.error('Error loading vitals:');
   } finally {
     loading.value = false;
   }
@@ -198,7 +198,7 @@ async function handleEdit() {
         editLoading.value = false;
       },
     });
-  } catch (e) {
+  } catch {
     toast.error('Unexpected error');
     editLoading.value = false;
   }
@@ -231,7 +231,7 @@ async function handleAssign() {
         assignLoading.value = false;
       },
     });
-  } catch (e) {
+  } catch {
     toast.error('Unexpected error');
     assignLoading.value = false;
   }
@@ -251,7 +251,7 @@ async function handleDelete() {
     toast.success('Vitals deleted');
     showDeleteDialog.value = false;
     allVitals.value = allVitals.value.filter(v => v.id !== selectedVitals.value?.id);
-  } catch (e) {
+  } catch {
     toast.error('Failed to delete vitals');
   } finally {
     deleteLoading.value = false;
@@ -301,7 +301,7 @@ async function handleBulkAssign() {
     toast.success('Assigned nurse to selected vitals');
     showBulkAssignDialog.value = false;
     clearSelection();
-  } catch (e) {
+  } catch {
     toast.error('Bulk assign failed');
   } finally {
     bulkAssignLoading.value = false;
@@ -321,7 +321,7 @@ async function handleBulkDelete() {
     allVitals.value = allVitals.value.filter(r => !selectedIds.value.includes(r.id));
     showBulkDeleteDialog.value = false;
     clearSelection();
-  } catch (e) {
+  } catch {
     toast.error('Bulk delete failed');
   } finally {
     bulkDeleteLoading.value = false;
@@ -386,7 +386,7 @@ async function fetchActivityLogs() {
   try {
     const res = await fetch('/admin/activity-logs');
     activityLogs.value = await res.json();
-  } catch (e) {
+  } catch {
     toast.error('Failed to load activity logs');
   } finally {
     activityLoading.value = false;
