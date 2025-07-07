@@ -3,6 +3,8 @@
 namespace Database\Factories;
 
 use Illuminate\Database\Eloquent\Factories\Factory;
+use App\Models\User;
+use App\Models\Clinic;
 
 /**
  * @extends \Illuminate\Database\Eloquent\Factories\Factory<\App\Models\Billing>
@@ -17,20 +19,13 @@ class BillingFactory extends Factory
     public function definition(): array
     {
         return [
-            'user_id' => \App\Models\User::factory(),
-            'date' => $this->faker->dateTimeBetween('-1 year', 'now')->format('Y-m-d'),
-            'description' => $this->faker->randomElement([
-                'Consultation Fee',
-                'Lab Test',
-                'Medication',
-                'X-Ray',
-                'Vaccination',
-                'Room Charge',
-                'Surgery',
-            ]),
+            'patient_id' => User::factory(),
+            'clinic_id' => Clinic::factory(),
             'amount' => $this->faker->randomFloat(2, 20, 1000),
-            'status' => $this->faker->randomElement(['Paid', 'Unpaid']),
-            'invoice_url' => $this->faker->boolean(80) ? $this->faker->url() : null,
+            'status' => $this->faker->randomElement(['pending', 'paid', 'overdue']),
+            'due_date' => $this->faker->optional()->date(),
+            'paid_at' => $this->faker->optional()->dateTime(),
+            'description' => $this->faker->optional()->sentence(),
         ];
     }
 }

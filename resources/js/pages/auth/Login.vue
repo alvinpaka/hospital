@@ -29,13 +29,13 @@ const submit = async () => {
         await fetch('http://hospital.test/sanctum/csrf-cookie', { credentials: 'include' });
         form.post(route('login'), {
             onFinish: () => form.reset('password'),
-            onError: (errors) => {
+            onError: () => {
                 if (form.hasErrors && form.errors.email === undefined && form.errors.password === undefined) {
                     loginError.value = 'Session expired or invalid. Please refresh and try again.';
                 }
             },
         });
-    } catch (e) {
+    } catch {
         loginError.value = 'Could not connect to server. Please try again.';
     }
 };

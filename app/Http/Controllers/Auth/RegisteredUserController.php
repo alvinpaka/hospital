@@ -12,6 +12,7 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rules;
 use Inertia\Inertia;
 use Inertia\Response;
+use Illuminate\Support\Str;
 
 class RegisteredUserController extends Controller
 {
@@ -50,5 +51,36 @@ class RegisteredUserController extends Controller
         Auth::login($user);
 
         return to_route('dashboard');
+    }
+
+    /**
+     * Admin: Create a doctor or nurse account.
+     */
+    public function adminStore(Request $request)
+    {
+        // Only allow admins
+        if (!$request->user() || $request->user()->role !== 'admin') {
+            abort(403, 'Only admins can create staff accounts.');
+        }
+
+        $request->validate([
+            'name' => 'required|string|max:255',
+            'email' => 'required|string|lowercase|email|max:255|unique:'.User::class,
+            'phone' => 'required|string|max:20',
+            'role' => 'required|in:doctor,nurse',
+            'password' => ['required', 'confirmed', \Illuminate\Validation\Rules\Password::defaults()],
+        ]);
+
+        $user = User::create([
+            'name' => $request->name,
+            'email' => $request->email,
+            'phone' => $request->phone,
+            'role' => $request->role,
+            'password' => \Illuminate\Support\Facades\Hash::make($request->password),
+            'email_verified_at' => now(),
+            'remember_token' => Str::random(10),
+        ]);
+
+        return redirect()->back()->with('success', 'Staff registered successfully!');
     }
 }

@@ -31,13 +31,13 @@ const labResultsTrend = computed(() => page.props.labResultsTrend || []);
     <AppLayout :breadcrumbs="breadcrumbs">
         <div class="flex flex-col gap-6 p-4 max-w-5xl mx-auto">
             <!-- Patient Overview -->
-            <div class="flex items-center gap-4 p-4 rounded-xl border border-sidebar-border/70 dark:border-sidebar-border bg-white dark:bg-gray-900">
+            <!-- <div class="flex items-center gap-4 p-4 rounded-xl border border-sidebar-border/70 dark:border-sidebar-border bg-white dark:bg-gray-900">
                 <UserInfo :user="user" :show-email="true" />
                 <div class="ml-6">
                     <div class="text-xs text-muted-foreground">Patient since {{ new Date(user.created_at).toLocaleDateString() }}</div>
                     <div class="text-xs text-muted-foreground">Email {{ user.email_verified_at ? 'verified' : 'not verified' }}</div>
                 </div>
-            </div>
+            </div> -->
 
             <!-- Dashboard Widgets -->
             <div class="grid gap-4 md:grid-cols-3">
@@ -46,7 +46,7 @@ const labResultsTrend = computed(() => page.props.labResultsTrend || []);
                     <div>
                         <div class="font-semibold mb-1">Next Appointment</div>
                         <div class="text-sm">{{ nextAppointment?.date || 'None' }}<span v-if="nextAppointment"> at {{ nextAppointment.time }}</span></div>
-                        <div class="text-xs text-muted-foreground" v-if="nextAppointment">{{ nextAppointment.department }} with {{ nextAppointment.doctor?.name || nextAppointment.doctor }}</div>
+                        <div class="text-xs text-muted-foreground" v-if="nextAppointment">{{ nextAppointment.doctor?.name || nextAppointment.doctor }}</div>
                         <div class="text-xs text-muted-foreground" v-else>No upcoming appointments</div>
                     </div>
                     <Link href="/appointments" class="mt-3 text-xs text-blue-600 hover:underline">See all appointments</Link>

@@ -1,9 +1,16 @@
-<template>
-  <table class="min-w-full divide-y divide-gray-200" v-bind="$attrs">
-    <slot />
-  </table>
-</template>
-
 <script setup lang="ts">
-// No props needed
-</script> 
+import type { HTMLAttributes } from 'vue'
+import { cn } from '@/lib/utils'
+
+const props = defineProps<{
+  class?: HTMLAttributes['class']
+}>()
+</script>
+
+<template>
+  <div data-slot="table-container" class="relative w-full overflow-auto">
+    <table data-slot="table" :class="cn('w-full caption-bottom text-sm', props.class)">
+      <slot />
+    </table>
+  </div>
+</template>

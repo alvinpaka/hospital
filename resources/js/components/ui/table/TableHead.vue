@@ -1,9 +1,17 @@
+<script setup lang="ts">
+import type { HTMLAttributes } from 'vue'
+import { cn } from '@/lib/utils'
+
+const props = defineProps<{
+  class?: HTMLAttributes['class']
+}>()
+</script>
+
 <template>
-  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" v-bind="$attrs">
+  <th
+    data-slot="table-head"
+    :class="cn('text-muted-foreground h-10 px-2 text-left align-middle font-medium whitespace-nowrap [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]', props.class)"
+  >
     <slot />
   </th>
 </template>
-
-<script setup lang="ts">
-// No props needed
-</script> 

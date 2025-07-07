@@ -23,6 +23,10 @@ class User extends Authenticatable
         'email',
         'phone',
         'password',
+        'role',
+        'clinic_id',
+        'email_verified_at',
+        'remember_token',
     ];
 
     /**
@@ -46,5 +50,69 @@ class User extends Authenticatable
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
         ];
+    }
+
+    /**
+     * Get the appointments for this user (as patient)
+     */
+    public function appointments()
+    {
+        return $this->hasMany(Appointment::class, 'patient_id');
+    }
+
+    /**
+     * Get the appointments for this user (as doctor)
+     */
+    public function doctorAppointments()
+    {
+        return $this->hasMany(Appointment::class, 'doctor_id');
+    }
+
+    /**
+     * Get the lab results for this user (as patient)
+     */
+    public function labResults()
+    {
+        return $this->hasMany(LabResult::class, 'patient_id');
+    }
+
+    /**
+     * Get the prescriptions for this user (as patient)
+     */
+    public function prescriptions()
+    {
+        return $this->hasMany(Prescription::class, 'patient_id');
+    }
+
+    /**
+     * Get the visits for this user (as patient)
+     */
+    public function visits()
+    {
+        return $this->hasMany(Visit::class, 'patient_id');
+    }
+
+    /**
+     * Get the visits for this user (as doctor)
+     */
+    public function doctorVisits()
+    {
+        return $this->hasMany(Visit::class, 'doctor_id');
+    }
+
+    /**
+     * Get the vitals for this user (as patient)
+     */
+    public function vitals()
+    {
+        return $this->hasMany(Vital::class, 'patient_id');
+    }
+
+    /**
+     * Get the clinic for this user (for admin users)
+     */
+    public function clinic()
+    {
+        return $this->belongsTo(Clinic::class);
     }
 }

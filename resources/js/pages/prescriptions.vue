@@ -128,7 +128,7 @@ function closeInstructionsDialog() {
   showInstructionsDialog.value = false;
   instructionsDialogText.value = '';
 }
-function truncateInstructions(text: string, maxLength = 40) {
+function truncateInstructions(text: string, maxLength = 30) {
   if (!text) return '';
   return text.length > maxLength ? text.slice(0, maxLength) + '...' : text;
 }
@@ -220,7 +220,7 @@ function truncateInstructions(text: string, maxLength = 40) {
                 <TableCell>{{ item.medication || 'N/A' }}</TableCell>
                 <TableCell>{{ item.dosage || 'N/A' }}</TableCell>
                 <TableCell>
-                  <span v-if="item.instructions && item.instructions.length > 40">
+                  <span v-if="item.instructions && item.instructions.length > 30">
                     {{ truncateInstructions(item.instructions) }}
                     <Button variant="link" size="sm" class="px-1 py-0 h-auto align-baseline" @click="openInstructionsDialog(item.instructions)">View More</Button>
                   </span>

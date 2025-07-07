@@ -5,11 +5,16 @@ import NavUser from '@/components/NavUser.vue';
 import { Sidebar, SidebarContent, SidebarFooter, SidebarHeader, SidebarMenu, SidebarMenuButton, SidebarMenuItem } from '@/components/ui/sidebar';
 import { type NavItem } from '@/types';
 import { Link, usePage } from '@inertiajs/vue3';
-import { BookOpen, Folder, LayoutGrid, Calendar, FileText, CreditCard, User } from 'lucide-vue-next';
+import { BookOpen, Folder, LayoutGrid, Calendar, FileText, User, Users, DollarSign } from 'lucide-vue-next';
 import AppLogo from './AppLogo.vue';
+import { usePrescriptionBlink } from '@/composables/usePrescriptionBlink';
+import { useAppointmentBlink } from '@/composables/useAppointmentBlink';
+import AppearanceTabs from '@/components/AppearanceTabs.vue';
 
 const page = usePage();
 const user = page.props.auth.user;
+const { prescriptionBlink } = usePrescriptionBlink();
+const { appointmentBlink } = useAppointmentBlink();
 
 const patientNavItems: NavItem[] = [
     {
@@ -21,11 +26,13 @@ const patientNavItems: NavItem[] = [
         title: 'My Appointments',
         href: '/appointments',
         icon: Calendar,
+        blink: appointmentBlink,
     },
     {
         title: 'My Prescriptions',
         href: '/prescriptions',
         icon: FileText,
+        blink: prescriptionBlink,
     },
     {
         title: 'My Lab Results',
@@ -43,13 +50,63 @@ const patientNavItems: NavItem[] = [
         icon: Calendar,
     },
     {
-        title: 'Profile',
-        href: '/settings/profile',
-        icon: User,
+        title: 'My Billings',
+        href: '/my-billings',
+        icon: DollarSign,
     },
 ];
 
-const mainNavItems: NavItem[] = user?.role === 'patient' ? patientNavItems : [
+const adminNavItems: NavItem[] = [
+    {
+        title: 'Admin Dashboard',
+        href: '/admin/dashboard',
+        icon: LayoutGrid,
+    },
+    {
+        title: 'Patient Management',
+        href: '/patient-management',
+        icon: Users,
+    },
+    {
+        title: 'Staff Management',
+        href: '/staff-management',
+        icon: Users,
+    },
+    {
+        title: 'Admin Appointments',
+        href: '/appointments',
+        icon: Calendar,
+        blink: appointmentBlink,
+    },
+    {
+        title: 'Admin Prescriptions',
+        href: '/admin/prescriptions',
+        icon: FileText,
+    },
+    {
+        title: 'Admin Lab Results',
+        href: '/admin/lab-results',
+        icon: Folder,
+    },
+    {
+        title: 'Admin Vitals',
+        href: '/admin/vitals',
+        icon: FileText,
+    },
+    {
+        title: 'Admin Visits',
+        href: '/admin/visits',
+        icon: Calendar,
+    },
+    {
+        title: 'Billing & Invoicing',
+        href: '/admin/billings',
+        icon: DollarSign,
+    },
+];
+
+const mainNavItems: NavItem[] = user?.role === 'patient' ? patientNavItems : 
+                                user?.role === 'admin' ? adminNavItems : [
     {
         title: 'Dashboard',
         href: '/dashboard',
@@ -57,18 +114,6 @@ const mainNavItems: NavItem[] = user?.role === 'patient' ? patientNavItems : [
     },
 ];
 
-const footerNavItems: NavItem[] = [
-    {
-        title: 'Github Repo',
-        href: 'https://github.com/laravel/vue-starter-kit',
-        icon: Folder,
-    },
-    {
-        title: 'Documentation',
-        href: 'https://laravel.com/docs/starter-kits#vue',
-        icon: BookOpen,
-    },
-];
 </script>
 
 <template>
@@ -87,11 +132,12 @@ const footerNavItems: NavItem[] = [
 
         <SidebarContent>
             <NavMain :items="mainNavItems" />
+            <NavUser />
         </SidebarContent>
 
         <SidebarFooter>
-            <NavFooter :items="footerNavItems" />
-            <NavUser />
+            
+            <AppearanceTabs />
         </SidebarFooter>
     </Sidebar>
     <slot />

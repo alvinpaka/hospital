@@ -62,10 +62,30 @@ import { Head, Link } from '@inertiajs/vue3';
                             </div>
                         </div>
                     </div>
+                    <!-- Login/Register for mobile (visible on mobile, hidden on lg+) -->
+                    <div class="flex flex-col items-center w-full mt-8 lg:hidden">
+                        <div class="mb-4 text-lg font-semibold text-[#1976d2] dark:text-[#90caf9] text-center">Ready to get started?</div>
+                        <div class="flex flex-col gap-4 w-full">
+                            <Link
+                                :href="route('login')"
+                                class="inline-flex items-center justify-center gap-2 rounded-xl border border-[#1976d2] bg-[#1976d2] min-w-[140px] px-6 py-2 text-base font-semibold leading-normal text-white shadow-md hover:scale-105 hover:bg-[#1565c0] hover:border-[#1565c0] transition-all duration-200 dark:border-[#90caf9] dark:bg-[#90caf9] dark:text-[#0a1929] dark:hover:bg-[#64b5f6] dark:hover:border-[#64b5f6]"
+                            >
+                                <span>Log in</span>
+                                <svg width="20" height="20" fill="none" viewBox="0 0 24 24"><path d="M5 12h14m-6-6 6 6-6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                            </Link>
+                            <Link
+                                :href="route('register')"
+                                class="inline-flex items-center justify-center gap-2 rounded-xl border border-[#1976d2] min-w-[140px] px-6 py-2 text-base font-semibold leading-normal text-[#1976d2] bg-white shadow-md hover:scale-105 hover:bg-[#e3f2fd] hover:border-[#1565c0] transition-all duration-200 dark:border-[#90caf9] dark:text-[#90caf9] dark:bg-[#161c24] dark:hover:bg-[#1e293b] dark:hover:border-[#64b5f6]"
+                            >
+                                <span>Register</span>
+                                <svg width="20" height="20" fill="none" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v2" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><circle cx="9" cy="7" r="4" stroke="currentColor" stroke-width="2"/><path d="M19 8v6M22 11h-6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+                            </Link>
+                        </div>
+                    </div>
                 </div>
                 <!-- Divider for large screens -->
                 <div class="hidden lg:block w-px bg-[#e3e8ee] dark:bg-[#23272e] mx-2"></div>
-                <!-- Medical Illustration -->
+                <!-- Medical Illustration and login/register for desktop (hidden on mobile) -->
                 <div class="hidden lg:flex flex-col w-[480px] items-center justify-center bg-[#e3f2fd] p-8 lg:px-16 dark:bg-[#22304a]">
                     <!-- Hospital SVG illustration (undraw style) -->
                     <svg width="220" height="160" viewBox="0 0 320 240" fill="none" xmlns="http://www.w3.org/2000/svg">

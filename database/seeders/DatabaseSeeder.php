@@ -22,11 +22,14 @@ class DatabaseSeeder extends Seeder
         // Users
         User::factory(10)->create();
 
-        // Test user
-        $testUser = User::factory()->create([
-            'name' => 'Test User',
-            'email' => 'test@example.com',
-        ]);
+        // Clinics
+        \App\Models\Clinic::factory(10)->create();
+
+        // Billings
+        \App\Models\Billing::factory(20)->create();
+
+        // Appointments
+        \App\Models\Appointment::factory(20)->create();
 
         // Seeders
         $this->call([
