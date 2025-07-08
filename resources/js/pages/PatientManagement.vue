@@ -12,6 +12,7 @@ import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { type BreadcrumbItem } from '@/types';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 const breadcrumbs: BreadcrumbItem[] = [
     {
@@ -50,13 +51,15 @@ const patientForm = ref({
     email: '',
     phone: '',
     password: '',
-    password_confirmation: ''
+    password_confirmation: '',
+    country_code: '+256'
 });
 
 const editForm = ref({
     name: '',
     email: '',
-    phone: ''
+    phone: '',
+    country_code: '+256',
 });
 
 // Computed
@@ -122,17 +125,21 @@ function openAddModal() {
         email: '',
         phone: '',
         password: '',
-        password_confirmation: ''
+        password_confirmation: '',
+        country_code: '+256'
     };
     showAddModal.value = true;
 }
 
 function openEditModal(patient) {
     selectedPatient.value = patient;
+    // Extract country code and phone
+    const match = (patient.phone || '').match(/^(\+\d{3})(\d{7,})$/);
     editForm.value = {
         name: patient.name,
         email: patient.email,
-        phone: patient.phone
+        phone: match ? match[2] : patient.phone,
+        country_code: match ? match[1] : '+256',
     };
     showEditModal.value = true;
 }
@@ -160,6 +167,12 @@ async function addPatient() {
     await ensureCsrfCookie();
     const xsrfToken = getCookie('XSRF-TOKEN');
     try {
+        // Combine country code and phone
+        const payload = {
+            ...patientForm.value,
+            phone: `${patientForm.value.country_code}${patientForm.value.phone}`,
+        };
+        delete payload.country_code;
         const res = await fetch('/api/patients', {
             method: 'POST',
             headers: {
@@ -167,7 +180,7 @@ async function addPatient() {
                 'X-XSRF-TOKEN': decodeURIComponent(xsrfToken),
             },
             credentials: 'include',
-            body: JSON.stringify(patientForm.value),
+            body: JSON.stringify(payload),
         });
         
         if (res.ok) {
@@ -186,6 +199,12 @@ async function updatePatient() {
     await ensureCsrfCookie();
     const xsrfToken = getCookie('XSRF-TOKEN');
     try {
+        // Combine country code and phone
+        const payload = {
+            ...editForm.value,
+            phone: `${editForm.value.country_code}${editForm.value.phone}`,
+        };
+        delete payload.country_code;
         const res = await fetch(`/api/patients/${selectedPatient.value.id}`, {
             method: 'PUT',
             headers: {
@@ -193,7 +212,7 @@ async function updatePatient() {
                 'X-XSRF-TOKEN': decodeURIComponent(xsrfToken),
             },
             credentials: 'include',
-            body: JSON.stringify(editForm.value),
+            body: JSON.stringify(payload),
         });
         
         if (res.ok) {
@@ -229,6 +248,29 @@ async function deletePatient() {
         }
     } catch {
         error.value = 'Failed to delete patient.';
+    }
+}
+
+async function verifyPatient(patient) {
+    await ensureCsrfCookie();
+    const xsrfToken = getCookie('XSRF-TOKEN');
+    try {
+        const res = await fetch(`/api/patients/${patient.id}/verify`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-XSRF-TOKEN': decodeURIComponent(xsrfToken),
+            },
+            credentials: 'include',
+        });
+        if (res.ok) {
+            await fetchPatients();
+        } else {
+            const data = await res.json();
+            error.value = data.message || 'Failed to verify patient.';
+        }
+    } catch {
+        error.value = 'Failed to verify patient.';
     }
 }
 
@@ -438,6 +480,12 @@ function getVisiblePages() {
                                                     </svg>
                                                     Delete Patient
                                                 </DropdownMenuItem>
+                                                <DropdownMenuItem v-if="!patient.email_verified_at" @click="verifyPatient(patient)" class="text-green-600 focus:text-green-600">
+                                                    <svg class="mr-2 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                                                    </svg>
+                                                    Verify Patient
+                                                </DropdownMenuItem>
                                             </DropdownMenuContent>
                                         </DropdownMenu>
                                     </div>
@@ -512,7 +560,7 @@ function getVisiblePages() {
                     <DialogDescription>Create a new patient account with login credentials.</DialogDescription>
                 </DialogHeader>
                 <form @submit.prevent="addPatient" class="space-y-4">
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
                         <div class="space-y-2">
                             <Label>Name</Label>
                             <Input v-model="patientForm.name" required placeholder="Full name" />
@@ -521,15 +569,30 @@ function getVisiblePages() {
                             <Label>Email</Label>
                             <Input v-model="patientForm.email" required type="email" placeholder="email@example.com" />
                         </div>
-                        <div class="space-y-2">
-                            <Label>Phone</Label>
-                            <Input v-model="patientForm.phone" required type="tel" placeholder="Phone number" autocomplete="tel" />
+                        <div class="flex flex-col gap-2 md:col-span-2">
+                            <Label>Phone number</Label>
+                            <div class="flex gap-2">
+                                <Select v-model="patientForm.country_code">
+                                    <SelectTrigger class="w-28">
+                                        <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="+256">🇺🇬 +256</SelectItem>
+                                        <SelectItem value="+254">🇰🇪 +254</SelectItem>
+                                        <SelectItem value="+255">🇹🇿 +255</SelectItem>
+                                        <SelectItem value="+250">🇷🇼 +250</SelectItem>
+                                        <SelectItem value="+211">🇸🇸 +211</SelectItem>
+                                        <SelectItem value="+243">🇨🇩 +243</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                                <Input v-model="patientForm.phone" required type="tel" placeholder="712345678" autocomplete="tel" class="flex-1" />
+                            </div>
                         </div>
                         <div class="space-y-2">
                             <Label>Password</Label>
                             <Input v-model="patientForm.password" required type="password" placeholder="Password" autocomplete="new-password" />
                         </div>
-                        <div class="space-y-2 md:col-span-2">
+                        <div class="space-y-2">
                             <Label>Confirm Password</Label>
                             <Input v-model="patientForm.password_confirmation" required type="password" placeholder="Confirm password" autocomplete="new-password" />
                         </div>
@@ -550,7 +613,7 @@ function getVisiblePages() {
                     <DialogDescription>Update patient information.</DialogDescription>
                 </DialogHeader>
                 <form @submit.prevent="updatePatient" class="space-y-4">
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
                         <div class="space-y-2">
                             <Label>Name</Label>
                             <Input v-model="editForm.name" required placeholder="Full name" />
@@ -559,9 +622,24 @@ function getVisiblePages() {
                             <Label>Email</Label>
                             <Input v-model="editForm.email" required type="email" placeholder="email@example.com" />
                         </div>
-                        <div class="space-y-2">
-                            <Label>Phone</Label>
-                            <Input v-model="editForm.phone" required type="tel" placeholder="Phone number" autocomplete="tel" />
+                        <div class="flex flex-col gap-2 md:col-span-2">
+                            <Label>Phone number</Label>
+                            <div class="flex gap-2">
+                                <Select v-model="editForm.country_code">
+                                    <SelectTrigger class="w-28">
+                                        <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="+256">🇺🇬 +256</SelectItem>
+                                        <SelectItem value="+254">🇰🇪 +254</SelectItem>
+                                        <SelectItem value="+255">🇹🇿 +255</SelectItem>
+                                        <SelectItem value="+250">🇷🇼 +250</SelectItem>
+                                        <SelectItem value="+211">🇸🇸 +211</SelectItem>
+                                        <SelectItem value="+243">🇨🇩 +243</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                                <Input v-model="editForm.phone" required type="tel" placeholder="712345678" autocomplete="tel" class="flex-1" />
+                            </div>
                         </div>
                     </div>
                     <DialogFooter>

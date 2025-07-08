@@ -12,6 +12,13 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogD
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { useForm } from '@inertiajs/vue3';
 import { toast } from 'vue-sonner';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Calendar } from '@/components/ui/calendar';
+import { CalendarIcon } from 'lucide-vue-next';
+import { DateFormatter, getLocalTimeZone, parseDate } from '@internationalized/date';
+import { cn } from '@/lib/utils';
+import { Label } from '@/components/ui/label';
+import { jsPDF } from 'jspdf';
 
 interface Visit {
   id: number;
@@ -39,6 +46,15 @@ const breadcrumbs = [
 const user = computed(() => usePage().props.auth?.user || usePage().props.user);
 const visits = usePage().props.visits;
 
+const allPatients = ref([]);
+const allStaff = ref([]);
+const patientSearch = ref('');
+const staffSearch = ref('');
+const selectedPatientId = ref('');
+const selectedStaffId = ref('');
+const df = new DateFormatter('en-US', { dateStyle: 'long' });
+const visitDate = ref(null);
+
 onMounted(() => {
   if (!user.value || user.value.role !== 'admin') return;
   try {
@@ -48,6 +64,21 @@ onMounted(() => {
     console.error('Error loading visits:', err);
   } finally {
     loading.value = false;
+  }
+});
+
+onMounted(async () => {
+  // Fetch all patients
+  const resPatients = await fetch('/api/patients?per_page=1000', { credentials: 'include' });
+  if (resPatients.ok) {
+    const data = await resPatients.json();
+    allPatients.value = data.data || [];
+  }
+  // Fetch all staff (doctors/nurses)
+  const resStaff = await fetch('/api/staff?per_page=1000', { credentials: 'include' });
+  if (resStaff.ok) {
+    const data = await resStaff.json();
+    allStaff.value = (data.data || []).filter(s => s.role === 'doctor' || s.role === 'nurse');
   }
 });
 
@@ -303,6 +334,242 @@ function openActivityLog() {
 function closeActivityLog() {
   showActivityLog.value = false;
 }
+
+const showAddDialog = ref(false);
+const addForm = useForm({
+  date: '',
+  reason: '',
+  patient_id: '',
+  doctor_id: '',
+});
+const addLoading = ref(false);
+
+const filteredPatients = computed(() => {
+  if (!patientSearch.value) return allPatients.value;
+  const search = patientSearch.value.toLowerCase();
+  return allPatients.value.filter(p => p.name.toLowerCase().includes(search) || (p.email && p.email.toLowerCase().includes(search)));
+});
+const filteredStaff = computed(() => {
+  if (!staffSearch.value) return allStaff.value;
+  const search = staffSearch.value.toLowerCase();
+  return allStaff.value.filter(s => s.name.toLowerCase().includes(search) || s.role.toLowerCase().includes(search));
+});
+
+function openAddDialog() {
+  showAddDialog.value = true;
+  addForm.reset();
+  selectedPatientId.value = '';
+  selectedStaffId.value = '';
+  visitDate.value = null;
+  patientSearch.value = '';
+  staffSearch.value = '';
+}
+
+async function handleAdd() {
+  addLoading.value = true;
+  addForm.clearErrors();
+  try {
+    const xsrfToken = getCookie('XSRF-TOKEN');
+    addForm.date = visitDate.value ? df.format(visitDate.value.toDate ? visitDate.value.toDate(getLocalTimeZone()) : visitDate.value) : '';
+    addForm.patient_id = selectedPatientId.value;
+    addForm.doctor_id = selectedStaffId.value;
+    const res = await fetch('/admin/visits', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-XSRF-TOKEN': decodeURIComponent(xsrfToken),
+      },
+      credentials: 'include',
+      body: JSON.stringify({
+        date: addForm.date,
+        reason: addForm.reason,
+        patient_id: addForm.patient_id,
+        doctor_id: addForm.doctor_id,
+      }),
+    });
+    const data = await res.json();
+    if (res.ok && data.success) {
+      allVisits.value.unshift(data.visit);
+      showAddDialog.value = false;
+      addForm.reset();
+      toast.success('Visit added successfully');
+    } else {
+      if (data.error) toast.error(data.error);
+      else toast.error('Failed to add visit');
+    }
+  } catch {
+    toast.error('Failed to add visit');
+  } finally {
+    addLoading.value = false;
+  }
+}
+
+function getCookie(name) {
+  const value = `; ${document.cookie}`;
+  const parts = value.split(`; ${name}=`);
+  if (parts.length === 2) return parts.pop().split(';').shift();
+}
+
+function handleExportCSV() {
+  const visits = allVisits.value;
+  if (!visits.length) {
+    toast.error('No visits to export');
+    return;
+  }
+  const headers = ['ID', 'Date', 'Doctor', 'Reason', 'Patient'];
+  const rows = visits.map(v => [
+    v.id,
+    v.date,
+    v.doctor,
+    v.reason,
+    v.patient?.name || ''
+  ]);
+  const csvContent = [headers, ...rows].map(row => row.map(String).map(cell => '"' + cell.replace(/"/g, '""') + '"').join(',')).join('\n');
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+  const link = document.createElement('a');
+  link.href = URL.createObjectURL(blob);
+  link.setAttribute('download', 'visits.csv');
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  toast.success('CSV exported');
+}
+
+function handleExportExcel() {
+  // Fallback: export as CSV with .xlsx extension
+  const visits = allVisits.value;
+  if (!visits.length) {
+    toast.error('No visits to export');
+    return;
+  }
+  const headers = ['ID', 'Date', 'Doctor', 'Reason', 'Patient'];
+  const rows = visits.map(v => [
+    v.id,
+    v.date,
+    v.doctor,
+    v.reason,
+    v.patient?.name || ''
+  ]);
+  const csvContent = [headers, ...rows].map(row => row.map(String).map(cell => '"' + cell.replace(/"/g, '""') + '"').join(',')).join('\n');
+  const blob = new Blob([csvContent], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+  const link = document.createElement('a');
+  link.href = URL.createObjectURL(blob);
+  link.setAttribute('download', 'visits.xlsx');
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  toast.success('Excel exported (CSV format)');
+}
+
+function handleExportPDF() {
+  const visits = allVisits.value;
+  if (!visits.length) {
+    toast.error('No visits to export');
+    return;
+  }
+  try {
+    const doc = new jsPDF();
+    const headers = ['ID', 'Date', 'Doctor', 'Reason', 'Patient'];
+    let y = 10;
+    doc.setFontSize(12);
+    doc.text('Visits Export', 10, y);
+    y += 10;
+    // Table headers
+    headers.forEach((header, i) => {
+      doc.text(header, 10 + i * 40, y);
+    });
+    y += 8;
+    // Table rows
+    visits.forEach(v => {
+      const row = [v.id, v.date, v.doctor, v.reason, v.patient?.name || ''];
+      row.forEach((cell, i) => {
+        doc.text(String(cell), 10 + i * 40, y);
+      });
+      y += 8;
+      if (y > 270) {
+        doc.addPage();
+        y = 10;
+      }
+    });
+    doc.save('visits.pdf');
+    toast.success('PDF exported');
+  } catch (e) {
+    toast.error('PDF export failed. Please ensure jsPDF is installed.');
+  }
+}
+
+const showSingleExportDialog = ref(false);
+const singleExportVisit = ref(null);
+
+function handleExportSingle(visitId) {
+  const visit = allVisits.value.find(v => v.id === visitId);
+  if (!visit) {
+    toast.error('Visit not found');
+    return;
+  }
+  singleExportVisit.value = visit;
+  showSingleExportDialog.value = true;
+}
+
+function handleExportSingleCSV() {
+  const v = singleExportVisit.value;
+  if (!v) return;
+  const headers = ['ID', 'Date', 'Doctor', 'Reason', 'Patient'];
+  const row = [v.id, v.date, v.doctor, v.reason, v.patient?.name || ''];
+  const csvContent = [headers, row].map(row => row.map(String).map(cell => '"' + cell.replace(/"/g, '""') + '"').join(',')).join('\n');
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+  const link = document.createElement('a');
+  link.href = URL.createObjectURL(blob);
+  link.setAttribute('download', `visit-${v.id}.csv`);
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  toast.success('CSV exported');
+  showSingleExportDialog.value = false;
+}
+
+function handleExportSingleExcel() {
+  const v = singleExportVisit.value;
+  if (!v) return;
+  const headers = ['ID', 'Date', 'Doctor', 'Reason', 'Patient'];
+  const row = [v.id, v.date, v.doctor, v.reason, v.patient?.name || ''];
+  const csvContent = [headers, row].map(row => row.map(String).map(cell => '"' + cell.replace(/"/g, '""') + '"').join(',')).join('\n');
+  const blob = new Blob([csvContent], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+  const link = document.createElement('a');
+  link.href = URL.createObjectURL(blob);
+  link.setAttribute('download', `visit-${v.id}.xlsx`);
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  toast.success('Excel exported (CSV format)');
+  showSingleExportDialog.value = false;
+}
+
+function handleExportSinglePDF() {
+  const v = singleExportVisit.value;
+  if (!v) return;
+  try {
+    const doc = new jsPDF();
+    const headers = ['ID', 'Date', 'Doctor', 'Reason', 'Patient'];
+    const row = [v.id, v.date, v.doctor, v.reason, v.patient?.name || ''];
+    let y = 10;
+    doc.setFontSize(12);
+    doc.text('Visit Export', 10, y);
+    y += 10;
+    headers.forEach((header, i) => {
+      doc.text(header, 10 + i * 40, y);
+    });
+    y += 8;
+    row.forEach((cell, i) => {
+      doc.text(String(cell), 10 + i * 40, y);
+    });
+    doc.save(`visit-${v.id}.pdf`);
+    toast.success('PDF exported');
+  } catch (e) {
+    toast.error('PDF export failed. Please ensure jsPDF is installed.');
+  }
+  showSingleExportDialog.value = false;
+}
 </script>
 
 <template>
@@ -322,6 +589,7 @@ function closeActivityLog() {
                 placeholder="Search by patient, doctor, department, or reason..."
                 class="max-w-sm"
               />
+              <Button variant="outline" @click="openAddDialog">Add Visit</Button>
               <Button variant="outline" @click="openExportDialog">Export</Button>
             </div>
           </div>
@@ -369,19 +637,12 @@ function closeActivityLog() {
                       {{ sortDirection === 'asc' ? '↑' : '↓' }}
                     </span>
                   </TableHead>
-                  <TableHead class="cursor-pointer" @click="toggleSort('department')">
-                    Department
-                    <span v-if="sortColumn === 'department'" class="ml-1">
-                      {{ sortDirection === 'asc' ? '↑' : '↓' }}
-                    </span>
-                  </TableHead>
                   <TableHead class="cursor-pointer" @click="toggleSort('reason')">
                     Reason
                     <span v-if="sortColumn === 'reason'" class="ml-1">
                       {{ sortDirection === 'asc' ? '↑' : '↓' }}
                     </span>
                   </TableHead>
-                  <TableHead>Summary</TableHead>
                   <TableHead>Patient</TableHead>
                   <TableHead>Actions</TableHead>
                 </TableRow>
@@ -389,16 +650,9 @@ function closeActivityLog() {
               <TableBody>
                 <TableRow v-for="item in paginatedVisits" :key="item.id" class="hover:bg-muted/50 transition-colors">
                   <TableCell>{{ formatDate(item.date) }}</TableCell>
-                  <TableCell>{{ item.reason || 'N/A' }}</TableCell>
                   <TableCell>{{ item.doctor || 'N/A' }}</TableCell>
+                  <TableCell>{{ item.reason || 'N/A' }}</TableCell>
                   <TableCell>{{ item.patient?.name || 'N/A' }}</TableCell>
-                  <TableCell>
-                    <span v-if="item.notes && item.notes.length > 60">
-                      {{ truncateNotes(item.notes) }}
-                      <Button variant="link" size="sm" class="px-1 py-0 h-auto align-baseline" @click="openNotesDialog(item.notes)">View More</Button>
-                    </span>
-                    <span v-else>{{ item.notes }}</span>
-                  </TableCell>
                   <TableCell>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
@@ -537,27 +791,16 @@ function closeActivityLog() {
             <DialogHeader>
               <DialogTitle>Export Visits</DialogTitle>
               <DialogDescription>
-                Export all visits as CSV or Excel file.
+                Export all visits as CSV, Excel, or PDF.
               </DialogDescription>
             </DialogHeader>
             <div class="flex flex-col gap-2">
               <Button variant="outline" @click="handleExportCSV">Export as CSV</Button>
               <Button variant="outline" @click="handleExportExcel">Export as Excel</Button>
+              <Button variant="outline" @click="handleExportPDF">Export as PDF</Button>
             </div>
             <DialogFooter>
               <Button variant="outline" @click="showExportDialog = false">Close</Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-        <!-- Summary Dialog -->
-        <Dialog v-model:open="showSummaryDialog">
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Visit Summary</DialogTitle>
-            </DialogHeader>
-            <div class="whitespace-pre-line text-base">{{ summaryDialogText }}</div>
-            <DialogFooter>
-              <Button variant="outline" @click="closeSummaryDialog">Close</Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
@@ -579,7 +822,6 @@ function closeActivityLog() {
                     <th class="border px-2 py-1">User</th>
                     <th class="border px-2 py-1">Action</th>
                     <th class="border px-2 py-1">Subject</th>
-                    <th class="border px-2 py-1">Summary</th>
                     <th class="border px-2 py-1">Details</th>
                   </tr>
                 </thead>
@@ -592,9 +834,26 @@ function closeActivityLog() {
                       <a v-if="subjectLink(log)" :href="subjectLink(log)" class="text-blue-600 underline" target="_blank">{{ log.subject_type }} #{{ log.subject_id }}</a>
                       <span v-else>{{ log.subject_type }} #{{ log.subject_id }}</span>
                     </td>
-                    <td class="border px-2 py-1">{{ activityLogSummary(log) }}</td>
                     <td class="border px-2 py-1">
-                      <pre class="whitespace-pre-wrap text-xs">{{ JSON.stringify(log.details, null, 2) }}</pre>
+                      <div v-if="typeof log.details === 'object' && log.details !== null">
+                        <table class="text-xs w-full">
+                          <tr v-for="(value, key) in log.details" :key="key" v-if="value !== null && value !== undefined">
+                            <td class="font-semibold align-top pr-2">{{ key }}:</td>
+                            <td>
+                              <span v-if="typeof value !== 'object'">{{ value }}</span>
+                              <span v-else>
+                                <table class="ml-2 border-l border-gray-200">
+                                  <tr v-for="(subValue, subKey) in value" :key="subKey" v-if="subValue !== null && subValue !== undefined">
+                                    <td class="font-semibold align-top pr-2">{{ subKey }}:</td>
+                                    <td>{{ subValue }}</td>
+                                  </tr>
+                                </table>
+                              </span>
+                            </td>
+                          </tr>
+                        </table>
+                      </div>
+                      <span v-else>{{ log.details }}</span>
                     </td>
                   </tr>
                 </tbody>
@@ -602,6 +861,94 @@ function closeActivityLog() {
             </div>
             <DialogFooter>
               <Button variant="outline" @click="closeActivityLog">Close</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+        <!-- Add Dialog -->
+        <Dialog v-model:open="showAddDialog">
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Add Visit</DialogTitle>
+              <DialogDescription>
+                Enter the details for the new visit.
+              </DialogDescription>
+            </DialogHeader>
+            <form @submit.prevent="handleAdd" class="space-y-4">
+              <div>
+                <Label>Date</Label>
+                <Popover>
+                  <PopoverTrigger as-child>
+                    <Button
+                      variant="outline"
+                      :class="cn('w-full justify-start text-left font-normal', !visitDate && 'text-muted-foreground')"
+                    >
+                      <CalendarIcon class="mr-2 h-4 w-4" />
+                      {{ visitDate ? df.format(visitDate.toDate ? visitDate.toDate(getLocalTimeZone()) : visitDate) : 'Pick a date' }}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent class="w-auto p-0">
+                    <Calendar v-model="visitDate" initial-focus />
+                  </PopoverContent>
+                </Popover>
+              </div>
+              <div>
+                <Label>Patient</Label>
+                <Input v-model="patientSearch" placeholder="Search patient by name..." class="w-full mb-2" />
+                <div class="max-h-40 overflow-y-auto border rounded bg-white dark:bg-neutral-900">
+                  <div v-if="filteredPatients.length === 0" class="p-2 text-muted-foreground">No patients found.</div>
+                  <ul v-else>
+                    <li v-for="p in filteredPatients" :key="p.id">
+                      <button type="button" class="w-full text-left px-4 py-2 hover:bg-muted/50 focus:bg-muted/80 rounded flex justify-between items-center"
+                        :class="{'bg-blue-100 dark:bg-blue-900': selectedPatientId === p.id}" @click="selectedPatientId = p.id">
+                        <span>{{ p.name }} <span class="text-xs text-muted-foreground">{{ p.email }}</span></span>
+                        <span v-if="selectedPatientId === p.id" class="text-blue-600 font-bold">Selected</span>
+                      </button>
+                    </li>
+                  </ul>
+                </div>
+              </div>
+              <div>
+                <Label>Doctor/Nurse</Label>
+                <Input v-model="staffSearch" placeholder="Search doctor or nurse..." class="w-full mb-2" />
+                <div class="max-h-40 overflow-y-auto border rounded bg-white dark:bg-neutral-900">
+                  <div v-if="filteredStaff.length === 0" class="p-2 text-muted-foreground">No staff found.</div>
+                  <ul v-else>
+                    <li v-for="s in filteredStaff" :key="s.id">
+                      <button type="button" class="w-full text-left px-4 py-2 hover:bg-muted/50 focus:bg-muted/80 rounded flex justify-between items-center"
+                        :class="{'bg-blue-100 dark:bg-blue-900': selectedStaffId === s.id}" @click="selectedStaffId = s.id">
+                        <span>{{ s.name }} <span class="text-xs text-muted-foreground">({{ s.role }})</span></span>
+                        <span v-if="selectedStaffId === s.id" class="text-blue-600 font-bold">Selected</span>
+                      </button>
+                    </li>
+                  </ul>
+                </div>
+              </div>
+              <div>
+                <Label>Reason</Label>
+                <Input v-model="addForm.reason" required />
+                <div v-if="addForm.errors.reason" class="text-red-600 text-xs mt-1">{{ addForm.errors.reason }}</div>
+              </div>
+              <DialogFooter>
+                <Button variant="outline" @click="showAddDialog = false" :disabled="addLoading">Cancel</Button>
+                <Button variant="default" type="submit" :loading="addLoading">Add</Button>
+              </DialogFooter>
+            </form>
+          </DialogContent>
+        </Dialog>
+        <!-- Single Export Dialog -->
+        <Dialog v-model:open="showSingleExportDialog">
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Export Visit</DialogTitle>
+              <DialogDescription>Export this visit as CSV, Excel, or PDF.</DialogDescription>
+            </DialogHeader>
+            <div class="flex flex-col gap-2">
+              <Button variant="outline" @click="handleExportSingleCSV">Export as CSV</Button>
+              <Button variant="outline" @click="handleExportSingleExcel">Export as Excel</Button>
+              <Button variant="outline" @click="handleExportSinglePDF">Export as PDF</Button>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" @click="showSingleExportDialog = false">Close</Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>

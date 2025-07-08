@@ -14,9 +14,7 @@ interface Visit {
   id: number;
   date: string;
   doctor: string;
-  department: string;
   reason: string;
-  summary: string;
 }
 
 const allVisits = ref<Visit[]>([]);
@@ -49,7 +47,6 @@ const filteredVisits = computed(() => {
   const query = searchQuery.value.toLowerCase();
   return allVisits.value.filter(visit =>
     visit.doctor.toLowerCase().includes(query) ||
-    visit.department.toLowerCase().includes(query) ||
     visit.reason.toLowerCase().includes(query)
   );
 });
@@ -117,21 +114,6 @@ function getPageNumbers() {
   return pages;
 }
 
-// Summary dialog state
-const showSummaryDialog = ref(false);
-const summaryDialogText = ref('');
-function openSummaryDialog(text: string) {
-  summaryDialogText.value = text;
-  showSummaryDialog.value = true;
-}
-function closeSummaryDialog() {
-  showSummaryDialog.value = false;
-  summaryDialogText.value = '';
-}
-function truncateSummary(text: string, maxLength = 40) {
-  if (!text) return '';
-  return text.length > maxLength ? text.slice(0, maxLength) + '...' : text;
-}
 </script>
 
 <template>
@@ -146,7 +128,7 @@ function truncateSummary(text: string, maxLength = 40) {
           </h1>
           <Input
             v-model="searchQuery"
-            placeholder="Search by doctor, department, or reason..."
+            placeholder="Search by doctor, or reason..."
             class="max-w-sm"
           />
         </div>
@@ -194,34 +176,19 @@ function truncateSummary(text: string, maxLength = 40) {
                     {{ sortDirection === 'asc' ? '↑' : '↓' }}
                   </span>
                 </TableHead>
-                <TableHead class="cursor-pointer" @click="toggleSort('department')">
-                  Department
-                  <span v-if="sortColumn === 'department'" class="ml-1">
-                    {{ sortDirection === 'asc' ? '↑' : '↓' }}
-                  </span>
-                </TableHead>
                 <TableHead class="cursor-pointer" @click="toggleSort('reason')">
                   Reason
                   <span v-if="sortColumn === 'reason'" class="ml-1">
                     {{ sortDirection === 'asc' ? '↑' : '↓' }}
                   </span>
                 </TableHead>
-                <TableHead>Summary</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               <TableRow v-for="item in paginatedVisits" :key="item.id" class="hover:bg-muted/50 transition-colors">
                 <TableCell>{{ formatDate(item.date) }}</TableCell>
                 <TableCell>{{ item.doctor || 'N/A' }}</TableCell>
-                <TableCell>{{ item.department || 'N/A' }}</TableCell>
                 <TableCell>{{ item.reason || 'N/A' }}</TableCell>
-                <TableCell>
-                  <span v-if="item.summary && item.summary.length > 40">
-                    {{ truncateSummary(item.summary) }}
-                    <Button variant="link" size="sm" class="px-1 py-0 h-auto align-baseline" @click="openSummaryDialog(item.summary)">View More</Button>
-                  </span>
-                  <span v-else>{{ item.summary }}</span>
-                </TableCell>
               </TableRow>
             </TableBody>
           </Table>
@@ -259,17 +226,6 @@ function truncateSummary(text: string, maxLength = 40) {
           </div>
         </div>
       </Card>
-      <Dialog v-model:open="showSummaryDialog">
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Visit Summary</DialogTitle>
-          </DialogHeader>
-          <div class="whitespace-pre-line text-base">{{ summaryDialogText }}</div>
-          <DialogFooter>
-            <Button variant="outline" @click="closeSummaryDialog">Close</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   </AppLayout>
 </template>

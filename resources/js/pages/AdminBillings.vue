@@ -8,11 +8,13 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { useRouter } from '@inertiajs/vue3';
+import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from '@/components/ui/select';
 
 const page = usePage();
 const billings = computed(() => page.props.billings.data || []);
 
-const statusFilter = ref('');
+const statusFilter = ref('all');
 const search = ref('');
 
 // Pagination
@@ -21,7 +23,7 @@ const pageSize = 10;
 
 const filteredBillings = computed(() => {
   let result = billings.value;
-  if (statusFilter.value) {
+  if (statusFilter.value && statusFilter.value !== 'all') {
     result = result.filter(b => b.status === statusFilter.value);
   }
   if (search.value) {
@@ -73,6 +75,41 @@ function resetPagination() {
 // Watch for filter changes to reset pagination
 import { watch } from 'vue';
 watch([search, statusFilter], resetPagination);
+
+const downloadPdf = (billingId: number) => {
+  window.location.href = `/admin/billings/${billingId}/pdf`;
+};
+
+const printBill = (billingId: number) => {
+  router.visit(`/admin/billings/${billingId}?print=1`);
+};
+
+function getPageNumbers() {
+  const pages = [];
+  const maxPagesToShow = 5;
+  let startPage = Math.max(1, currentPage.value - Math.floor(maxPagesToShow / 2));
+  let endPage = Math.min(totalPages.value, startPage + maxPagesToShow - 1);
+  // Always show page 1
+  if (startPage > 1) {
+    pages.push(1);
+    if (startPage > 2) {
+      // Optionally add an ellipsis if you want
+      // pages.push('...');
+    }
+  }
+  for (let i = startPage; i <= endPage; i++) {
+    pages.push(i);
+  }
+  // Always show last page
+  if (endPage < totalPages.value) {
+    if (endPage < totalPages.value - 1) {
+      // Optionally add an ellipsis if you want
+      // pages.push('...');
+    }
+    pages.push(totalPages.value);
+  }
+  return pages;
+}
 </script>
 
 <template>
@@ -81,7 +118,10 @@ watch([search, statusFilter], resetPagination);
     <div class="max-w-7xl mx-auto p-4 flex flex-col gap-6">
       <div class="flex items-center justify-between">
         <div>
-          <h1 class="text-3xl font-bold tracking-tight">Billing & Invoicing</h1>
+          <h1 class="text-3xl font-bold tracking-tight flex items-center gap-2">
+            <span>Billing & Invoicing</span>
+            <Badge variant="secondary">Admin</Badge>
+          </h1>
           <p class="text-muted-foreground">Manage payments and billing for patients.</p>
         </div>
         <Button asChild>
@@ -95,12 +135,17 @@ watch([search, statusFilter], resetPagination);
         <CardContent>
           <div class="flex flex-wrap gap-4 mb-4 items-center">
             <Input v-model="search" placeholder="Search by patient name or description..." class="w-64" />
-            <select v-model="statusFilter" class="border rounded-md px-2 py-1 text-sm">
-              <option value="">All Statuses</option>
-              <option value="pending">Pending</option>
-              <option value="paid">Paid</option>
-              <option value="overdue">Overdue</option>
-            </select>
+            <Select v-model="statusFilter">
+              <SelectTrigger class="w-48">
+                <SelectValue placeholder="All Statuses" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Statuses</SelectItem>
+                <SelectItem value="pending">Pending</SelectItem>
+                <SelectItem value="paid">Paid</SelectItem>
+                <SelectItem value="overdue">Overdue</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
           <div class="overflow-x-auto">
             <Table>
@@ -182,13 +227,19 @@ watch([search, statusFilter], resetPagination);
                         </DropdownMenuItem>
                         
                         <!-- Download PDF -->
-                        <DropdownMenuItem asChild>
-                          <Link :href="`/admin/billings/${billing.id}/pdf`">
-                            <svg class="mr-2 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                            </svg>
-                            Download PDF
-                          </Link>
+                        <DropdownMenuItem @click="downloadPdf(billing.id)">
+                          <svg class="mr-2 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                          </svg>
+                          Download PDF
+                        </DropdownMenuItem>
+                        
+                        <!-- Print -->
+                        <DropdownMenuItem @click="printBill(billing.id)">
+                          <svg class="mr-2 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 9V2h12v7M6 18v4h12v-4M6 14h12" />
+                          </svg>
+                          Print
                         </DropdownMenuItem>
                         
                         <!-- Delete Bill -->
@@ -234,27 +285,8 @@ watch([search, statusFilter], resetPagination);
               </Button>
               
               <div class="flex items-center gap-1">
-                <Button 
-                  v-for="pageNum in Math.min(5, totalPages)" 
-                  :key="pageNum"
-                  variant="outline" 
-                  size="sm" 
-                  :class="pageNum === currentPage ? 'bg-primary text-primary-foreground' : ''"
-                  @click="goToPage(pageNum)"
-                >
+                <Button v-for="pageNum in getPageNumbers()" :key="pageNum" variant="outline" size="sm" :class="pageNum === currentPage ? 'bg-primary text-primary-foreground' : ''" @click="goToPage(pageNum)">
                   {{ pageNum }}
-                </Button>
-                
-                <span v-if="totalPages > 5" class="px-2 text-sm text-muted-foreground">...</span>
-                
-                <Button 
-                  v-if="totalPages > 5"
-                  variant="outline" 
-                  size="sm" 
-                  :class="totalPages === currentPage ? 'bg-primary text-primary-foreground' : ''"
-                  @click="goToPage(totalPages)"
-                >
-                  {{ totalPages }}
                 </Button>
               </div>
               

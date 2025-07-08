@@ -70,15 +70,15 @@
                 <td>{{ $idx + 1 }}</td>
                 <td>{{ $item->description }}</td>
                 <td>{{ $item->quantity }}</td>
-                <td class="text-right">₦{{ number_format($item->unit_price, 2) }}</td>
-                <td class="text-right">₦{{ number_format($item->total, 2) }}</td>
+                <td class="text-right">UGX{{ number_format($item->unit_price, 2) }}</td>
+                <td class="text-right">UGX{{ number_format($item->total, 2) }}</td>
             </tr>
         @endforeach
         </tbody>
         <tfoot>
         <tr class="total-row">
             <td colspan="4" class="text-right">Total</td>
-            <td class="text-right">₦{{ number_format($billing->amount, 2) }}</td>
+            <td class="text-right">UGX{{ number_format($billing->amount, 2) }}</td>
         </tr>
         </tfoot>
     </table>

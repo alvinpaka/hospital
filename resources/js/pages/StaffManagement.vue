@@ -12,6 +12,7 @@ import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { type BreadcrumbItem } from '@/types';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 const breadcrumbs: BreadcrumbItem[] = [
     {
@@ -49,6 +50,7 @@ const staffForm = ref({
     name: '',
     email: '',
     phone: '',
+    country_code: '+256',
     role: 'doctor',
     password: '',
     password_confirmation: ''
@@ -58,6 +60,7 @@ const editForm = ref({
     name: '',
     email: '',
     phone: '',
+    country_code: '+256',
     role: ''
 });
 
@@ -123,6 +126,7 @@ function openAddModal() {
         name: '',
         email: '',
         phone: '',
+        country_code: '+256',
         role: 'doctor',
         password: '',
         password_confirmation: ''
@@ -132,10 +136,13 @@ function openAddModal() {
 
 function openEditModal(staffMember) {
     selectedStaff.value = staffMember;
+    // Extract country code and phone
+    const match = (staffMember.phone || '').match(/^(\+\d{3})(\d{7,})$/);
     editForm.value = {
         name: staffMember.name,
         email: staffMember.email,
-        phone: staffMember.phone,
+        phone: match ? match[2] : staffMember.phone,
+        country_code: match ? match[1] : '+256',
         role: staffMember.role
     };
     showEditModal.value = true;
@@ -163,6 +170,11 @@ async function addStaff() {
     await ensureCsrfCookie();
     const xsrfToken = getCookie('XSRF-TOKEN');
     try {
+        const payload = {
+            ...staffForm.value,
+            phone: `${staffForm.value.country_code}${staffForm.value.phone}`,
+        };
+        delete payload.country_code;
         const res = await fetch('/api/staff', {
             method: 'POST',
             headers: {
@@ -170,9 +182,8 @@ async function addStaff() {
                 'X-XSRF-TOKEN': decodeURIComponent(xsrfToken),
             },
             credentials: 'include',
-            body: JSON.stringify(staffForm.value),
+            body: JSON.stringify(payload),
         });
-        
         if (res.ok) {
             showAddModal.value = false;
             await fetchStaff();
@@ -189,6 +200,12 @@ async function updateStaff() {
     await ensureCsrfCookie();
     const xsrfToken = getCookie('XSRF-TOKEN');
     try {
+        // Combine country code and phone
+        const payload = {
+            ...editForm.value,
+            phone: `${editForm.value.country_code}${editForm.value.phone}`,
+        };
+        delete payload.country_code;
         const res = await fetch(`/api/staff/${selectedStaff.value.id}`, {
             method: 'PUT',
             headers: {
@@ -196,7 +213,7 @@ async function updateStaff() {
                 'X-XSRF-TOKEN': decodeURIComponent(xsrfToken),
             },
             credentials: 'include',
-            body: JSON.stringify(editForm.value),
+            body: JSON.stringify(payload),
         });
         
         if (res.ok) {
@@ -532,21 +549,37 @@ function getRoleBadgeVariant(role) {
                             <Label>Email</Label>
                             <Input v-model="staffForm.email" required type="email" placeholder="email@example.com" />
                         </div>
-                        <div class="space-y-2">
-                            <Label>Phone</Label>
-                            <Input v-model="staffForm.phone" required type="tel" placeholder="Phone number" autocomplete="tel" />
+                        <div class="flex flex-col gap-2 md:col-span-2">
+                            <Label>Phone number</Label>
+                            <div class="flex gap-2">
+                                <Select v-model="staffForm.country_code">
+                                    <SelectTrigger class="w-28">
+                                        <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="+256">🇺🇬 +256</SelectItem>
+                                        <SelectItem value="+254">🇰🇪 +254</SelectItem>
+                                        <SelectItem value="+255">🇹🇿 +255</SelectItem>
+                                        <SelectItem value="+250">🇷🇼 +250</SelectItem>
+                                        <SelectItem value="+211">🇸🇸 +211</SelectItem>
+                                        <SelectItem value="+243">🇨🇩 +243</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                                <Input v-model="staffForm.phone" required type="tel" placeholder="712345678" autocomplete="tel" class="flex-1" />
+                            </div>
                         </div>
                         <div class="space-y-2">
                             <Label>Role</Label>
-                            <select 
-                                v-model="staffForm.role" 
-                                class="w-full rounded-md border border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
-                                required
-                            >
-                                <option value="doctor">Doctor</option>
-                                <option value="nurse">Nurse</option>
-                                <option value="admin">Administrator</option>
-                            </select>
+                            <Select v-model="staffForm.role" required>
+                                <SelectTrigger class="w-full">
+                                    <SelectValue placeholder="Select role" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="doctor">Doctor</SelectItem>
+                                    <SelectItem value="nurse">Nurse</SelectItem>
+                                    <SelectItem value="admin">Administrator</SelectItem>
+                                </SelectContent>
+                            </Select>
                         </div>
                         <div class="space-y-2">
                             <Label>Password</Label>
@@ -582,21 +615,37 @@ function getRoleBadgeVariant(role) {
                             <Label>Email</Label>
                             <Input v-model="editForm.email" required type="email" placeholder="email@example.com" />
                         </div>
-                        <div class="space-y-2">
-                            <Label>Phone</Label>
-                            <Input v-model="editForm.phone" required type="tel" placeholder="Phone number" autocomplete="tel" />
+                        <div class="flex flex-col gap-2 md:col-span-2">
+                            <Label>Phone number</Label>
+                            <div class="flex gap-2">
+                                <Select v-model="editForm.country_code">
+                                    <SelectTrigger class="w-28">
+                                        <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="+256">🇺🇬 +256</SelectItem>
+                                        <SelectItem value="+254">🇰🇪 +254</SelectItem>
+                                        <SelectItem value="+255">🇹🇿 +255</SelectItem>
+                                        <SelectItem value="+250">🇷🇼 +250</SelectItem>
+                                        <SelectItem value="+211">🇸🇸 +211</SelectItem>
+                                        <SelectItem value="+243">🇨🇩 +243</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                                <Input v-model="editForm.phone" required type="tel" placeholder="712345678" autocomplete="tel" class="flex-1" />
+                            </div>
                         </div>
                         <div class="space-y-2">
                             <Label>Role</Label>
-                            <select 
-                                v-model="editForm.role" 
-                                class="w-full rounded-md border border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
-                                required
-                            >
-                                <option value="doctor">Doctor</option>
-                                <option value="nurse">Nurse</option>
-                                <option value="admin">Administrator</option>
-                            </select>
+                            <Select v-model="editForm.role" required>
+                                <SelectTrigger class="w-full">
+                                    <SelectValue placeholder="Select role" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="doctor">Doctor</SelectItem>
+                                    <SelectItem value="nurse">Nurse</SelectItem>
+                                    <SelectItem value="admin">Administrator</SelectItem>
+                                </SelectContent>
+                            </Select>
                         </div>
                     </div>
                     <DialogFooter>

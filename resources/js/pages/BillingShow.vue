@@ -1,22 +1,14 @@
 <script setup lang="ts">
 import AppLayout from '@/layouts/AppLayout.vue';
 import { Head, Link, usePage, router } from '@inertiajs/vue3';
-import { computed } from 'vue';
+import { computed, onMounted } from 'vue';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 
 const page = usePage();
 const billing = computed(() => page.props.billing);
-
-// Determine if admin or user route
-const isAdmin = computed(() => {
-  try {
-    return router.page?.url?.startsWith('/admin/billings') || false;
-  } catch {
-    return false;
-  }
-});
+const isAdmin = computed(() => page.props.isAdmin);
 
 function statusBadge(status: string) {
   switch (status) {
@@ -38,6 +30,23 @@ function pdfUrl() {
     return `/my-billings/${billing.value.id}/pdf`;
   }
 }
+
+function pdfViewUrl() {
+  if (isAdmin.value) {
+    return `/admin/billings/${billing.value.id}/pdf/view`;
+  } else {
+    return `/my-billings/${billing.value.id}/pdf/view`;
+  }
+}
+
+onMounted(() => {
+  if (typeof window !== 'undefined') {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('print') === '1') {
+      setTimeout(() => window.print(), 300);
+    }
+  }
+});
 </script>
 
 <template>
@@ -106,6 +115,9 @@ function pdfUrl() {
             <Button variant="outline" @click="printInvoice">Print</Button>
             <Button variant="outline" asChild>
               <a :href="pdfUrl()" target="_blank">Download PDF</a>
+            </Button>
+            <Button variant="outline" asChild>
+              <a :href="pdfViewUrl()" target="_blank">View PDF</a>
             </Button>
           </div>
         </CardContent>

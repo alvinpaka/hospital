@@ -12,6 +12,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogD
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { useForm } from '@inertiajs/vue3';
 import { toast } from 'vue-sonner';
+import { jsPDF } from 'jspdf';
 
 interface VitalsRecord {
   id: number;
@@ -258,9 +259,181 @@ async function handleDelete() {
   }
 }
 
-// Dummy handlers for actions (to be implemented)
-function handleExportCSV() { showExportDialog.value = false; }
-function handleExportExcel() { showExportDialog.value = false; }
+// Export dialog state for single record
+const showSingleExportDialog = ref(false);
+const singleExportVitals = ref(null);
+
+function handleExportSingle(id) {
+  const record = allVitals.value.find(v => v.id === id);
+  if (!record) {
+    toast.error('Vitals record not found');
+    return;
+  }
+  singleExportVitals.value = record;
+  showSingleExportDialog.value = true;
+}
+
+function handleExportCSV() {
+  const vitals = allVitals.value;
+  if (!vitals.length) {
+    toast.error('No vitals to export');
+    return;
+  }
+  const headers = ['ID', 'Patient', 'Temperature', 'Blood Pressure', 'Heart Rate', 'Respiratory Rate', 'Oxygen Saturation', 'Weight', 'Height', 'Fasting', 'Recorded By', 'Recorded At'];
+  const rows = vitals.map(v => [
+    v.id,
+    v.patient?.name || '',
+    v.temperature,
+    v.blood_pressure,
+    v.heart_rate,
+    v.respiratory_rate,
+    v.oxygen_saturation,
+    v.weight,
+    v.height,
+    v.fasting ? 'Yes' : 'No',
+    v.recorded_by,
+    v.recorded_at
+  ]);
+  const csvContent = [headers, ...rows].map(row => row.map(String).map(cell => '"' + cell.replace(/"/g, '""') + '"').join(',')).join('\n');
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+  const link = document.createElement('a');
+  link.href = URL.createObjectURL(blob);
+  link.setAttribute('download', 'vitals.csv');
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  toast.success('CSV exported');
+  showExportDialog.value = false;
+}
+
+function handleExportExcel() {
+  const vitals = allVitals.value;
+  if (!vitals.length) {
+    toast.error('No vitals to export');
+    return;
+  }
+  const headers = ['ID', 'Patient', 'Temperature', 'Blood Pressure', 'Heart Rate', 'Respiratory Rate', 'Oxygen Saturation', 'Weight', 'Height', 'Fasting', 'Recorded By', 'Recorded At'];
+  const rows = vitals.map(v => [
+    v.id,
+    v.patient?.name || '',
+    v.temperature,
+    v.blood_pressure,
+    v.heart_rate,
+    v.respiratory_rate,
+    v.oxygen_saturation,
+    v.weight,
+    v.height,
+    v.fasting ? 'Yes' : 'No',
+    v.recorded_by,
+    v.recorded_at
+  ]);
+  const csvContent = [headers, ...rows].map(row => row.map(String).map(cell => '"' + cell.replace(/"/g, '""') + '"').join(',')).join('\n');
+  const blob = new Blob([csvContent], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+  const link = document.createElement('a');
+  link.href = URL.createObjectURL(blob);
+  link.setAttribute('download', 'vitals.xlsx');
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  toast.success('Excel exported (CSV format)');
+  showExportDialog.value = false;
+}
+
+function handleExportPDF() {
+  const vitals = allVitals.value;
+  if (!vitals.length) {
+    toast.error('No vitals to export');
+    return;
+  }
+  try {
+    const doc = new jsPDF();
+    const headers = ['ID', 'Patient', 'Temperature', 'Blood Pressure', 'Heart Rate', 'Respiratory Rate', 'Oxygen Saturation', 'Weight', 'Height', 'Fasting', 'Recorded By', 'Recorded At'];
+    let y = 10;
+    doc.setFontSize(12);
+    doc.text('Vitals Export', 10, y);
+    y += 10;
+    headers.forEach((header, i) => {
+      doc.text(header, 10 + i * 30, y);
+    });
+    y += 8;
+    vitals.forEach(v => {
+      const row = [v.id, v.patient?.name || '', v.temperature, v.blood_pressure, v.heart_rate, v.respiratory_rate, v.oxygen_saturation, v.weight, v.height, v.fasting ? 'Yes' : 'No', v.recorded_by, v.recorded_at];
+      row.forEach((cell, i) => {
+        doc.text(String(cell), 10 + i * 30, y);
+      });
+      y += 8;
+      if (y > 270) {
+        doc.addPage();
+        y = 10;
+      }
+    });
+    doc.save('vitals.pdf');
+    toast.success('PDF exported');
+  } catch (e) {
+    toast.error('PDF export failed. Please ensure jsPDF is installed.');
+  }
+  showExportDialog.value = false;
+}
+
+function handleExportSingleCSV() {
+  const v = singleExportVitals.value;
+  if (!v) return;
+  const headers = ['ID', 'Patient', 'Temperature', 'Blood Pressure', 'Heart Rate', 'Respiratory Rate', 'Oxygen Saturation', 'Weight', 'Height', 'Fasting', 'Recorded By', 'Recorded At'];
+  const row = [v.id, v.patient?.name || '', v.temperature, v.blood_pressure, v.heart_rate, v.respiratory_rate, v.oxygen_saturation, v.weight, v.height, v.fasting ? 'Yes' : 'No', v.recorded_by, v.recorded_at];
+  const csvContent = [headers, row].map(row => row.map(String).map(cell => '"' + cell.replace(/"/g, '""') + '"').join(',')).join('\n');
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+  const link = document.createElement('a');
+  link.href = URL.createObjectURL(blob);
+  link.setAttribute('download', `vitals-${v.id}.csv`);
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  toast.success('CSV exported');
+  showSingleExportDialog.value = false;
+}
+
+function handleExportSingleExcel() {
+  const v = singleExportVitals.value;
+  if (!v) return;
+  const headers = ['ID', 'Patient', 'Temperature', 'Blood Pressure', 'Heart Rate', 'Respiratory Rate', 'Oxygen Saturation', 'Weight', 'Height', 'Fasting', 'Recorded By', 'Recorded At'];
+  const row = [v.id, v.patient?.name || '', v.temperature, v.blood_pressure, v.heart_rate, v.respiratory_rate, v.oxygen_saturation, v.weight, v.height, v.fasting ? 'Yes' : 'No', v.recorded_by, v.recorded_at];
+  const csvContent = [headers, row].map(row => row.map(String).map(cell => '"' + cell.replace(/"/g, '""') + '"').join(',')).join('\n');
+  const blob = new Blob([csvContent], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+  const link = document.createElement('a');
+  link.href = URL.createObjectURL(blob);
+  link.setAttribute('download', `vitals-${v.id}.xlsx`);
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  toast.success('Excel exported (CSV format)');
+  showSingleExportDialog.value = false;
+}
+
+function handleExportSinglePDF() {
+  const v = singleExportVitals.value;
+  if (!v) return;
+  try {
+    const doc = new jsPDF();
+    const headers = ['ID', 'Patient', 'Temperature', 'Blood Pressure', 'Heart Rate', 'Respiratory Rate', 'Oxygen Saturation', 'Weight', 'Height', 'Fasting', 'Recorded By', 'Recorded At'];
+    const row = [v.id, v.patient?.name || '', v.temperature, v.blood_pressure, v.heart_rate, v.respiratory_rate, v.oxygen_saturation, v.weight, v.height, v.fasting ? 'Yes' : 'No', v.recorded_by, v.recorded_at];
+    let y = 10;
+    doc.setFontSize(12);
+    doc.text('Vitals Export', 10, y);
+    y += 10;
+    headers.forEach((header, i) => {
+      doc.text(header, 10 + i * 30, y);
+    });
+    y += 8;
+    row.forEach((cell, i) => {
+      doc.text(String(cell), 10 + i * 30, y);
+    });
+    doc.save(`vitals-${v.id}.pdf`);
+    toast.success('PDF exported');
+  } catch (e) {
+    toast.error('PDF export failed. Please ensure jsPDF is installed.');
+  }
+  showSingleExportDialog.value = false;
+}
 
 const selectedIds = ref<number[]>([]);
 const allSelected = computed(() => selectedIds.value.length === paginatedVitals.value.length && paginatedVitals.value.length > 0);
@@ -682,12 +855,13 @@ function closeActivityLog() {
             <DialogHeader>
               <DialogTitle>Export Vitals</DialogTitle>
               <DialogDescription>
-                Export all vitals as CSV or Excel file.
+                Export all vitals as CSV, Excel, or PDF.
               </DialogDescription>
             </DialogHeader>
             <div class="flex flex-col gap-2">
               <Button variant="outline" @click="handleExportCSV">Export as CSV</Button>
               <Button variant="outline" @click="handleExportExcel">Export as Excel</Button>
+              <Button variant="outline" @click="handleExportPDF">Export as PDF</Button>
             </div>
             <DialogFooter>
               <Button variant="outline" @click="showExportDialog = false">Close</Button>
@@ -777,6 +951,22 @@ function closeActivityLog() {
       </div>
       <DialogFooter>
         <Button variant="outline" @click="closeActivityLog">Close</Button>
+      </DialogFooter>
+    </DialogContent>
+  </Dialog>
+  <Dialog v-model:open="showSingleExportDialog">
+    <DialogContent>
+      <DialogHeader>
+        <DialogTitle>Export Vitals Record</DialogTitle>
+        <DialogDescription>Export this vitals record as CSV, Excel, or PDF.</DialogDescription>
+      </DialogHeader>
+      <div class="flex flex-col gap-2">
+        <Button variant="outline" @click="handleExportSingleCSV">Export as CSV</Button>
+        <Button variant="outline" @click="handleExportSingleExcel">Export as Excel</Button>
+        <Button variant="outline" @click="handleExportSinglePDF">Export as PDF</Button>
+      </div>
+      <DialogFooter>
+        <Button variant="outline" @click="showSingleExportDialog = false">Close</Button>
       </DialogFooter>
     </DialogContent>
   </Dialog>

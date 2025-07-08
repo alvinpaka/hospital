@@ -9,11 +9,16 @@ class Prescription extends Model
     use HasFactory;
 
     protected $fillable = [
-        'patient_id', 'medication', 'dosage', 'instructions', 'doctor', 'start_date', 'end_date'
+        'patient_id', 'drug_id', 'dosage', 'instructions', 'doctor', 'start_date', 'end_date'
     ];
 
     public function patient()
     {
         return $this->belongsTo(\App\Models\User::class, 'patient_id');
+    }
+
+    public function drug()
+    {
+        return $this->belongsTo(\App\Models\Drug::class, 'drug_id');
     }
 }

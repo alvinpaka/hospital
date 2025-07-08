@@ -10,6 +10,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { jsPDF } from 'jspdf';
 
 interface Prescription {
   id: number;
@@ -50,20 +51,26 @@ onMounted(() => {
   }
 });
 
+// Update filtering to use drug generic_name
 const filteredPrescriptions = computed(() => {
   const query = searchQuery.value.toLowerCase();
   return allPrescriptions.value.filter(prescription =>
-    prescription.medication.toLowerCase().includes(query) ||
-    prescription.doctor.toLowerCase().includes(query) ||
-    prescription.patient?.toLowerCase().includes(query) ||
-    prescription.dosage.toLowerCase().includes(query)
+    (prescription.drug?.generic_name ?? '').toLowerCase().includes(query) ||
+    (prescription.doctor ?? '').toLowerCase().includes(query) ||
+    (prescription.patient ?? '').toLowerCase().includes(query) ||
+    (prescription.dosage ?? '').toLowerCase().includes(query)
   );
 });
 
+// Update sorting to use drug generic_name if sorting by medication
 const sortedPrescriptions = computed(() => {
   return [...filteredPrescriptions.value].sort((a, b) => {
-    const aValue = a[sortColumn.value];
-    const bValue = b[sortColumn.value];
+    let aValue = a[sortColumn.value];
+    let bValue = b[sortColumn.value];
+    if (sortColumn.value === 'medication') {
+      aValue = a.drug?.generic_name ?? '';
+      bValue = b.drug?.generic_name ?? '';
+    }
     if (sortColumn.value === 'start_date' || sortColumn.value === 'end_date') {
       return sortDirection.value === 'asc'
         ? new Date(aValue).getTime() - new Date(bValue).getTime()
@@ -131,6 +138,10 @@ const showInstructionsDialog = ref(false);
 const instructionsDialogText = ref('');
 const selectedPrescription = ref<Prescription | null>(null);
 
+// Export dialog state for single record
+const showSingleExportDialog = ref(false);
+const singleExportPrescription = ref(null);
+
 function openEditDialog(prescription: Prescription) {
   selectedPrescription.value = prescription;
   showEditDialog.value = true;
@@ -163,12 +174,169 @@ function truncateInstructions(text: string, maxLength = 30) {
 function handleEdit() { showEditDialog.value = false; }
 function handleDelete() { showDeleteDialog.value = false; }
 function handleAssign() { showAssignDialog.value = false; }
-function handleExportCSV() { showExportDialog.value = false; }
-function handleExportExcel() { showExportDialog.value = false; }
 
 function handleExportSingle(id: number) {
-  // TODO: Implement export logic for a single prescription
-  alert('Exporting prescription with ID: ' + id);
+  const record = allPrescriptions.value.find(v => v.id === id);
+  if (!record) {
+    toast.error('Prescription not found');
+    return;
+  }
+  singleExportPrescription.value = record;
+  showSingleExportDialog.value = true;
+}
+
+function handleExportCSV() {
+  const prescriptions = allPrescriptions.value;
+  if (!prescriptions.length) {
+    toast.error('No prescriptions to export');
+    return;
+  }
+  const headers = ['ID', 'Medication', 'Dosage', 'Instructions', 'Doctor', 'Patient', 'Start Date', 'End Date'];
+  const rows = prescriptions.map(v => [
+    v.id,
+    v.drug?.generic_name ?? '',
+    v.dosage,
+    v.instructions,
+    v.doctor,
+    v.patient,
+    v.start_date,
+    v.end_date
+  ]);
+  const csvContent = [headers, ...rows].map(row => row.map(String).map(cell => '"' + cell.replace(/"/g, '""') + '"').join(',')).join('\n');
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+  const link = document.createElement('a');
+  link.href = URL.createObjectURL(blob);
+  link.setAttribute('download', 'prescriptions.csv');
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  toast.success('CSV exported');
+  showExportDialog.value = false;
+}
+
+function handleExportExcel() {
+  const prescriptions = allPrescriptions.value;
+  if (!prescriptions.length) {
+    toast.error('No prescriptions to export');
+    return;
+  }
+  const headers = ['ID', 'Medication', 'Dosage', 'Instructions', 'Doctor', 'Patient', 'Start Date', 'End Date'];
+  const rows = prescriptions.map(v => [
+    v.id,
+    v.drug?.generic_name ?? '',
+    v.dosage,
+    v.instructions,
+    v.doctor,
+    v.patient,
+    v.start_date,
+    v.end_date
+  ]);
+  const csvContent = [headers, ...rows].map(row => row.map(String).map(cell => '"' + cell.replace(/"/g, '""') + '"').join(',')).join('\n');
+  const blob = new Blob([csvContent], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+  const link = document.createElement('a');
+  link.href = URL.createObjectURL(blob);
+  link.setAttribute('download', 'prescriptions.xlsx');
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  toast.success('Excel exported (CSV format)');
+  showExportDialog.value = false;
+}
+
+function handleExportPDF() {
+  const prescriptions = allPrescriptions.value;
+  if (!prescriptions.length) {
+    toast.error('No prescriptions to export');
+    return;
+  }
+  try {
+    const doc = new jsPDF();
+    const headers = ['ID', 'Medication', 'Dosage', 'Instructions', 'Doctor', 'Patient', 'Start Date', 'End Date'];
+    let y = 10;
+    doc.setFontSize(12);
+    doc.text('Prescriptions Export', 10, y);
+    y += 10;
+    headers.forEach((header, i) => {
+      doc.text(header, 10 + i * 30, y);
+    });
+    y += 8;
+    prescriptions.forEach(v => {
+      const row = [v.id, v.drug?.generic_name ?? '', v.dosage, v.instructions, v.doctor, v.patient, v.start_date, v.end_date];
+      row.forEach((cell, i) => {
+        doc.text(String(cell), 10 + i * 30, y);
+      });
+      y += 8;
+      if (y > 270) {
+        doc.addPage();
+        y = 10;
+      }
+    });
+    doc.save('prescriptions.pdf');
+    toast.success('PDF exported');
+  } catch (e) {
+    toast.error('PDF export failed. Please ensure jsPDF is installed.');
+  }
+  showExportDialog.value = false;
+}
+
+function handleExportSingleCSV() {
+  const v = singleExportPrescription.value;
+  if (!v) return;
+  const headers = ['ID', 'Medication', 'Dosage', 'Instructions', 'Doctor', 'Patient', 'Start Date', 'End Date'];
+  const row = [v.id, v.drug?.generic_name ?? '', v.dosage, v.instructions, v.doctor, v.patient, v.start_date, v.end_date];
+  const csvContent = [headers, row].map(row => row.map(String).map(cell => '"' + cell.replace(/"/g, '""') + '"').join(',')).join('\n');
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+  const link = document.createElement('a');
+  link.href = URL.createObjectURL(blob);
+  link.setAttribute('download', `prescription-${v.id}.csv`);
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  toast.success('CSV exported');
+  showSingleExportDialog.value = false;
+}
+
+function handleExportSingleExcel() {
+  const v = singleExportPrescription.value;
+  if (!v) return;
+  const headers = ['ID', 'Medication', 'Dosage', 'Instructions', 'Doctor', 'Patient', 'Start Date', 'End Date'];
+  const row = [v.id, v.drug?.generic_name ?? '', v.dosage, v.instructions, v.doctor, v.patient, v.start_date, v.end_date];
+  const csvContent = [headers, row].map(row => row.map(String).map(cell => '"' + cell.replace(/"/g, '""') + '"').join(',')).join('\n');
+  const blob = new Blob([csvContent], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+  const link = document.createElement('a');
+  link.href = URL.createObjectURL(blob);
+  link.setAttribute('download', `prescription-${v.id}.xlsx`);
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  toast.success('Excel exported (CSV format)');
+  showSingleExportDialog.value = false;
+}
+
+function handleExportSinglePDF() {
+  const v = singleExportPrescription.value;
+  if (!v) return;
+  try {
+    const doc = new jsPDF();
+    const headers = ['ID', 'Medication', 'Dosage', 'Instructions', 'Doctor', 'Patient', 'Start Date', 'End Date'];
+    const row = [v.id, v.drug?.generic_name ?? '', v.dosage, v.instructions, v.doctor, v.patient, v.start_date, v.end_date];
+    let y = 10;
+    doc.setFontSize(12);
+    doc.text('Prescription Export', 10, y);
+    y += 10;
+    headers.forEach((header, i) => {
+      doc.text(header, 10 + i * 30, y);
+    });
+    y += 8;
+    row.forEach((cell, i) => {
+      doc.text(String(cell), 10 + i * 30, y);
+    });
+    doc.save(`prescription-${v.id}.pdf`);
+    toast.success('PDF exported');
+  } catch (e) {
+    toast.error('PDF export failed. Please ensure jsPDF is installed.');
+  }
+  showSingleExportDialog.value = false;
 }
 </script>
 
@@ -236,7 +404,6 @@ function handleExportSingle(id: number) {
                       {{ sortDirection === 'asc' ? '↑' : '↓' }}
                     </span>
                   </TableHead>
-                  <TableHead>Instructions</TableHead>
                   <TableHead class="cursor-pointer" @click="toggleSort('doctor')">
                     Doctor
                     <span v-if="sortColumn === 'doctor'" class="ml-1">
@@ -263,15 +430,8 @@ function handleExportSingle(id: number) {
               </TableHeader>
               <TableBody>
                 <TableRow v-for="item in paginatedPrescriptions" :key="item.id" class="hover:bg-muted/50 transition-colors">
-                  <TableCell>{{ item.medication || 'N/A' }}</TableCell>
+                  <TableCell>{{ item.drug?.generic_name || 'N/A' }}</TableCell>
                   <TableCell>{{ item.dosage || 'N/A' }}</TableCell>
-                  <TableCell>
-                    <span v-if="item.instructions && item.instructions.length > 30">
-                      {{ truncateInstructions(item.instructions) }}
-                      <Button variant="link" size="sm" class="px-1 py-0 h-auto align-baseline" @click="openInstructionsDialog(item.instructions)">View More</Button>
-                    </span>
-                    <span v-else>{{ item.instructions }}</span>
-                  </TableCell>
                   <TableCell>{{ item.doctor || 'N/A' }}</TableCell>
                   <TableCell>{{ item.patient?.name || 'N/A' }}</TableCell>
                   <TableCell>{{ formatDate(item.start_date) }}</TableCell>
@@ -292,6 +452,7 @@ function handleExportSingle(id: number) {
                         <DropdownMenuItem @click="openEditDialog(item)">Edit</DropdownMenuItem>
                         <DropdownMenuItem @click="openAssignDialog(item)">Assign</DropdownMenuItem>
                         <DropdownMenuItem @click="handleExportSingle(item.id)">Export</DropdownMenuItem>
+                        <DropdownMenuItem @click="openInstructionsDialog(item.instructions)">View Instructions</DropdownMenuItem>
                         <DropdownMenuItem @click="openDeleteDialog(item)" class="text-red-600 focus:text-red-600">Delete</DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
@@ -392,6 +553,7 @@ function handleExportSingle(id: number) {
             <div class="flex flex-col gap-2">
               <Button variant="outline" @click="handleExportCSV">Export as CSV</Button>
               <Button variant="outline" @click="handleExportExcel">Export as Excel</Button>
+              <Button variant="outline" @click="handleExportPDF">Export as PDF</Button>
             </div>
             <DialogFooter>
               <Button variant="outline" @click="showExportDialog = false">Close</Button>
@@ -410,6 +572,25 @@ function handleExportSingle(id: number) {
             <div class="whitespace-pre-line text-base">{{ instructionsDialogText }}</div>
             <DialogFooter>
               <Button variant="outline" @click="closeInstructionsDialog">Close</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+        <!-- Single Export Dialog -->
+        <Dialog v-model:open="showSingleExportDialog">
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Export Prescription</DialogTitle>
+              <DialogDescription>
+                Export the selected prescription as CSV, Excel, or PDF.
+              </DialogDescription>
+            </DialogHeader>
+            <div class="flex flex-col gap-2">
+              <Button variant="outline" @click="handleExportSingleCSV">Export as CSV</Button>
+              <Button variant="outline" @click="handleExportSingleExcel">Export as Excel</Button>
+              <Button variant="outline" @click="handleExportSinglePDF">Export as PDF</Button>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" @click="showSingleExportDialog = false">Close</Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
