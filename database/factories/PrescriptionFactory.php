@@ -13,7 +13,7 @@ class PrescriptionFactory extends Factory
     {
         return [
             'patient_id' => User::factory(),
-            'medication' => $this->faker->word,
+            'drug_id' => $this->faker->numberBetween(1, 3),
             'dosage' => $this->faker->randomElement(['5mg', '10mg', '20mg']),
             'instructions' => $this->faker->sentence,
             'doctor' => $this->faker->name,

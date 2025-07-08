@@ -85,4 +85,24 @@ class VisitController extends Controller
             ->header('Content-Type', 'text/csv')
             ->header('Content-Disposition', 'attachment; filename="visits.csv"');
     }
+
+    public function store(Request $request)
+    {
+        $user = $request->user();
+        if (!$user || $user->role !== 'admin') abort(403);
+        $data = $request->validate([
+            'date' => 'required|date',
+            'doctor_id' => 'required|exists:users,id',
+            'patient_id' => 'required|exists:users,id',
+            'reason' => 'required|string|max:255',
+        ]);
+        $visit = Visit::create([
+            'patient_id' => $data['patient_id'],
+            'doctor' => '', // deprecated, but keep for compatibility
+            'doctor_id' => $data['doctor_id'],
+            'date' => $data['date'],
+            'reason' => $data['reason'],
+        ]);
+        return response()->json(['success' => true, 'visit' => $visit->fresh('patient')]);
+    }
 }

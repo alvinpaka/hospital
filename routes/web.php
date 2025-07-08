@@ -42,6 +42,7 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/admin/lab-results-export', [\App\Http\Controllers\LabResultController::class, 'export'])->name('admin.lab-results.export');
     Route::get('/admin/vitals', [\App\Http\Controllers\VitalController::class, 'adminIndex'])->name('admin.vitals');
     Route::get('/admin/visits', [\App\Http\Controllers\VisitController::class, 'adminIndex'])->name('admin.visits');
+    Route::post('/admin/visits', [\App\Http\Controllers\VisitController::class, 'store'])->name('admin.visits.store');
     Route::post('/admin/vitals/{id}/update', [\App\Http\Controllers\VitalController::class, 'update'])->name('admin.vitals.update');
     Route::delete('/admin/vitals/{id}', [\App\Http\Controllers\VitalController::class, 'destroy'])->name('admin.vitals.destroy');
     Route::post('/admin/vitals/{id}/assign', [\App\Http\Controllers\VitalController::class, 'assign'])->name('admin.vitals.assign');
@@ -71,6 +72,7 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/my-billings', [\App\Http\Controllers\BillingController::class, 'myBills'])->name('my.billings');
     Route::get('/my-billings/{billing}', [\App\Http\Controllers\BillingController::class, 'show'])->name('my.billings.show');
     Route::get('/my-billings/{billing}/pdf', [\App\Http\Controllers\BillingController::class, 'pdf'])->name('my.billings.pdf');
+    Route::get('/my-billings/{billing}/pdf/view', [\App\Http\Controllers\BillingController::class, 'pdfView'])->name('my.billings.pdf.view');
 });
 
 // Billing & Invoicing
@@ -84,6 +86,7 @@ Route::middleware(['auth', 'admin'])->group(function () {
     Route::post('/admin/billings/{billing}/mark-paid', [\App\Http\Controllers\BillingController::class, 'markAsPaid'])->name('admin.billings.markPaid');
     Route::get('/admin/billings/{billing}', [\App\Http\Controllers\BillingController::class, 'show'])->name('admin.billings.show');
     Route::get('/admin/billings/{billing}/pdf', [\App\Http\Controllers\BillingController::class, 'pdf'])->name('admin.billings.pdf');
+    Route::get('/admin/billings/{billing}/pdf/view', [\App\Http\Controllers\BillingController::class, 'pdfView'])->name('admin.billings.pdf.view');
 });
 
 require __DIR__.'/settings.php';

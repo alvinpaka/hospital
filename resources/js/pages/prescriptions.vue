@@ -49,9 +49,9 @@ onMounted(() => {
 const filteredPrescriptions = computed(() => {
   const query = searchQuery.value.toLowerCase();
   return allPrescriptions.value.filter(prescription =>
-    prescription.medication.toLowerCase().includes(query) ||
-    prescription.doctor.toLowerCase().includes(query) ||
-    prescription.dosage.toLowerCase().includes(query)
+    (prescription.medication ?? '').toLowerCase().includes(query) ||
+    (prescription.doctor ?? '').toLowerCase().includes(query) ||
+    (prescription.dosage ?? '').toLowerCase().includes(query)
   );
 });
 
@@ -217,7 +217,7 @@ function truncateInstructions(text: string, maxLength = 30) {
             </TableHeader>
             <TableBody>
               <TableRow v-for="item in paginatedPrescriptions" :key="item.id" class="hover:bg-muted/50 transition-colors">
-                <TableCell>{{ item.medication || 'N/A' }}</TableCell>
+                <TableCell>{{ item.drug?.generic_name || item.drug?.generic_name || 'N/A' }}</TableCell>
                 <TableCell>{{ item.dosage || 'N/A' }}</TableCell>
                 <TableCell>
                   <span v-if="item.instructions && item.instructions.length > 30">

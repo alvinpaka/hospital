@@ -12,6 +12,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogD
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { useForm } from '@inertiajs/vue3';
 import { toast } from 'vue-sonner';
+import { jsPDF } from 'jspdf';
 
 interface LabResult {
   id: number;
@@ -263,9 +264,171 @@ async function handleDelete() {
   }
 }
 
-// Dummy handlers for actions (to be implemented)
-function handleExportCSV() { showExportDialog.value = false; }
-function handleExportExcel() { showExportDialog.value = false; }
+// Export dialog state for single record
+const showSingleExportDialog = ref(false);
+const singleExportLabResult = ref(null);
+
+function handleExportSingle(id) {
+  const record = allLabResults.value.find(v => v.id === id);
+  if (!record) {
+    toast.error('Lab result not found');
+    return;
+  }
+  singleExportLabResult.value = record;
+  showSingleExportDialog.value = true;
+}
+
+function handleExportCSV() {
+  const results = allLabResults.value;
+  if (!results.length) {
+    toast.error('No lab results to export');
+    return;
+  }
+  const headers = ['ID', 'Date', 'Type', 'Result', 'Doctor', 'Patient', 'Notes'];
+  const rows = results.map(v => [
+    v.id,
+    v.date,
+    v.type,
+    v.result,
+    v.doctor,
+    v.patient,
+    v.notes
+  ]);
+  const csvContent = [headers, ...rows].map(row => row.map(String).map(cell => '"' + cell.replace(/"/g, '""') + '"').join(',')).join('\n');
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+  const link = document.createElement('a');
+  link.href = URL.createObjectURL(blob);
+  link.setAttribute('download', 'lab-results.csv');
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  toast.success('CSV exported');
+  showExportDialog.value = false;
+}
+
+function handleExportExcel() {
+  const results = allLabResults.value;
+  if (!results.length) {
+    toast.error('No lab results to export');
+    return;
+  }
+  const headers = ['ID', 'Date', 'Type', 'Result', 'Doctor', 'Patient', 'Notes'];
+  const rows = results.map(v => [
+    v.id,
+    v.date,
+    v.type,
+    v.result,
+    v.doctor,
+    v.patient,
+    v.notes
+  ]);
+  const csvContent = [headers, ...rows].map(row => row.map(String).map(cell => '"' + cell.replace(/"/g, '""') + '"').join(',')).join('\n');
+  const blob = new Blob([csvContent], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+  const link = document.createElement('a');
+  link.href = URL.createObjectURL(blob);
+  link.setAttribute('download', 'lab-results.xlsx');
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  toast.success('Excel exported (CSV format)');
+  showExportDialog.value = false;
+}
+
+function handleExportPDF() {
+  const results = allLabResults.value;
+  if (!results.length) {
+    toast.error('No lab results to export');
+    return;
+  }
+  try {
+    const doc = new jsPDF();
+    const headers = ['ID', 'Date', 'Type', 'Result', 'Doctor', 'Patient', 'Notes'];
+    let y = 10;
+    doc.setFontSize(12);
+    doc.text('Lab Results Export', 10, y);
+    y += 10;
+    headers.forEach((header, i) => {
+      doc.text(header, 10 + i * 30, y);
+    });
+    y += 8;
+    results.forEach(v => {
+      const row = [v.id, v.date, v.type, v.result, v.doctor, v.patient, v.notes];
+      row.forEach((cell, i) => {
+        doc.text(String(cell), 10 + i * 30, y);
+      });
+      y += 8;
+      if (y > 270) {
+        doc.addPage();
+        y = 10;
+      }
+    });
+    doc.save('lab-results.pdf');
+    toast.success('PDF exported');
+  } catch {
+    toast.error('PDF export failed. Please ensure jsPDF is installed.');
+  }
+  showExportDialog.value = false;
+}
+
+function handleExportSingleCSV() {
+  const v = singleExportLabResult.value;
+  if (!v) return;
+  const headers = ['ID', 'Date', 'Type', 'Result', 'Doctor', 'Patient', 'Notes'];
+  const row = [v.id, v.date, v.type, v.result, v.doctor, v.patient, v.notes];
+  const csvContent = [headers, row].map(row => row.map(String).map(cell => '"' + cell.replace(/"/g, '""') + '"').join(',')).join('\n');
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+  const link = document.createElement('a');
+  link.href = URL.createObjectURL(blob);
+  link.setAttribute('download', `lab-result-${v.id}.csv`);
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  toast.success('CSV exported');
+  showSingleExportDialog.value = false;
+}
+
+function handleExportSingleExcel() {
+  const v = singleExportLabResult.value;
+  if (!v) return;
+  const headers = ['ID', 'Date', 'Type', 'Result', 'Doctor', 'Patient', 'Notes'];
+  const row = [v.id, v.date, v.type, v.result, v.doctor, v.patient, v.notes];
+  const csvContent = [headers, row].map(row => row.map(String).map(cell => '"' + cell.replace(/"/g, '""') + '"').join(',')).join('\n');
+  const blob = new Blob([csvContent], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+  const link = document.createElement('a');
+  link.href = URL.createObjectURL(blob);
+  link.setAttribute('download', `lab-result-${v.id}.xlsx`);
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  toast.success('Excel exported (CSV format)');
+  showSingleExportDialog.value = false;
+}
+
+function handleExportSinglePDF() {
+  const v = singleExportLabResult.value;
+  if (!v) return;
+  try {
+    const doc = new jsPDF();
+    const headers = ['ID', 'Date', 'Type', 'Result', 'Doctor', 'Patient', 'Notes'];
+    const row = [v.id, v.date, v.type, v.result, v.doctor, v.patient, v.notes];
+    let y = 10;
+    doc.setFontSize(12);
+    doc.text('Lab Result Export', 10, y);
+    y += 10;
+    headers.forEach((header, i) => {
+      doc.text(header, 10 + i * 30, y);
+    });
+    y += 8;
+    row.forEach((cell, i) => {
+      doc.text(String(cell), 10 + i * 30, y);
+    });
+    doc.save(`lab-result-${v.id}.pdf`);
+    toast.success('PDF exported');
+  } catch {
+    toast.error('PDF export failed. Please ensure jsPDF is installed.');
+  }
+  showSingleExportDialog.value = false;
+}
 
 const selectedIds = ref<number[]>([]);
 const allSelected = computed(() => selectedIds.value.length === paginatedLabResults.value.length && paginatedLabResults.value.length > 0);
@@ -669,6 +832,7 @@ function confirmBulkExport() { handleBulkExport(); showBulkExportDialog.value = 
             <div class="flex flex-col gap-2">
               <Button variant="outline" @click="handleExportCSV">Export as CSV</Button>
               <Button variant="outline" @click="handleExportExcel">Export as Excel</Button>
+              <Button variant="outline" @click="handleExportPDF">Export as PDF</Button>
             </div>
             <DialogFooter>
               <Button variant="outline" @click="showExportDialog = false">Close</Button>
@@ -780,6 +944,23 @@ function confirmBulkExport() { handleBulkExport(); showBulkExportDialog.value = 
             </div>
             <DialogFooter>
               <Button variant="outline" @click="closeActivityLog">Close</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+        <!-- Single Export Dialog -->
+        <Dialog v-model:open="showSingleExportDialog">
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Export Lab Result</DialogTitle>
+              <DialogDescription>Export this lab result as CSV, Excel, or PDF.</DialogDescription>
+            </DialogHeader>
+            <div class="flex flex-col gap-2">
+              <Button variant="outline" @click="handleExportSingleCSV">Export as CSV</Button>
+              <Button variant="outline" @click="handleExportSingleExcel">Export as Excel</Button>
+              <Button variant="outline" @click="handleExportSinglePDF">Export as PDF</Button>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" @click="showSingleExportDialog = false">Close</Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>

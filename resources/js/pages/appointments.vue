@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import AppLayout from '@/layouts/AppLayout.vue';
 import { Head, usePage } from '@inertiajs/vue3';
-import { ref, onMounted, computed } from 'vue';
+import { ref, onMounted, computed, watch } from 'vue';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
@@ -19,11 +19,13 @@ import {
   DateFormatter,
   type DateValue,
   getLocalTimeZone,
+  parseDate,
 } from '@internationalized/date'
 import { CalendarIcon } from 'lucide-vue-next'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Calendar } from '@/components/ui/calendar'
 import { cn } from '@/lib/utils'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 const appointments = ref([]);
 const loading = ref(true);
@@ -44,7 +46,7 @@ const adminTotalPages = computed(() => Math.ceil(filteredAdminAppointments.value
 
 // Admin search and filter functionality
 const adminSearch = ref('');
-const adminStatusFilter = ref('');
+const adminStatusFilter = ref('all');
 const adminDateRange = ref({ start: '', end: '' });
 
 // Filtered appointments for admin
@@ -62,7 +64,7 @@ const filteredAdminAppointments = computed(() => {
   }
   
   // Filter by status
-  if (adminStatusFilter.value) {
+  if (adminStatusFilter.value && adminStatusFilter.value !== 'all') {
     filtered = filtered.filter(appt => appt.status === adminStatusFilter.value);
   }
   
@@ -124,7 +126,7 @@ const adminPageNumbers = computed(() => {
 // Reset admin filters
 function resetAdminFilters() {
   adminSearch.value = '';
-  adminStatusFilter.value = '';
+  adminStatusFilter.value = 'all';
   adminDateRange.value = { start: '', end: '' };
   adminPage.value = 1;
 }
@@ -190,6 +192,11 @@ const df = new DateFormatter('en-US', {
 })
 
 const value = ref<DateValue>()
+
+const adminDateStart = ref(adminDateRange.value.start ? parseDate(adminDateRange.value.start) : null);
+const adminDateEnd = ref(adminDateRange.value.end ? parseDate(adminDateRange.value.end) : null);
+watch(adminDateStart, (val) => { adminDateRange.value.start = val ? val.toString() : ''; });
+watch(adminDateEnd, (val) => { adminDateRange.value.end = val ? val.toString() : ''; });
 
 onMounted(async () => {
   await fetchAppointments();
@@ -491,40 +498,55 @@ const breadcrumbs: BreadcrumbItem[] = [
               <!-- Status Filter -->
               <div class="space-y-2">
                 <Label for="status-filter">Status</Label>
-                <select 
-                  id="status-filter"
-                  v-model="adminStatusFilter" 
-                  class="w-full rounded-md border border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
-                >
-                  <option value="">All Statuses</option>
-                  <option value="pending">Pending</option>
-                  <option value="confirmed">Confirmed</option>
-                  <option value="canceled">Canceled</option>
-                </select>
+                <Select v-model="adminStatusFilter">
+                  <SelectTrigger class="w-full">
+                    <SelectValue placeholder="All Statuses" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Statuses</SelectItem>
+                    <SelectItem value="pending">Pending</SelectItem>
+                    <SelectItem value="confirmed">Confirmed</SelectItem>
+                    <SelectItem value="canceled">Canceled</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
               
               <!-- Date Range Start -->
               <div class="space-y-2">
                 <Label for="date-start">Date From</Label>
-                <input
-                  id="date-start"
-                  type="date"
-                  v-model="adminDateRange.start"
-                  class="w-full rounded-md border border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
-                  placeholder="Start Date"
-                />
+                <Popover>
+                  <PopoverTrigger as-child>
+                    <Button
+                      variant="outline"
+                      :class="cn('w-full justify-start text-left font-normal', !adminDateStart && 'text-muted-foreground')"
+                    >
+                      <CalendarIcon class="mr-2 h-4 w-4" />
+                      {{ adminDateStart ? df.format(adminDateStart.toDate(getLocalTimeZone())) : 'Pick a date' }}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent class="w-auto p-0">
+                    <Calendar v-model="adminDateStart" initial-focus />
+                  </PopoverContent>
+                </Popover>
               </div>
               
               <!-- Date Range End -->
               <div class="space-y-2">
                 <Label for="date-end">Date To</Label>
-                <input
-                  id="date-end"
-                  type="date"
-                  v-model="adminDateRange.end"
-                  class="w-full rounded-md border border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
-                  placeholder="End Date"
-                />
+                <Popover>
+                  <PopoverTrigger as-child>
+                    <Button
+                      variant="outline"
+                      :class="cn('w-full justify-start text-left font-normal', !adminDateEnd && 'text-muted-foreground')"
+                    >
+                      <CalendarIcon class="mr-2 h-4 w-4" />
+                      {{ adminDateEnd ? df.format(adminDateEnd.toDate(getLocalTimeZone())) : 'Pick a date' }}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent class="w-auto p-0">
+                    <Calendar v-model="adminDateEnd" initial-focus />
+                  </PopoverContent>
+                </Popover>
               </div>
             </div>
             

@@ -26,8 +26,10 @@ class BillingController extends Controller
     public function show(Billing $billing)
     {
         $billing->load(['patient', 'clinic', 'items']);
+        $isAdmin = request()->routeIs('admin.billings.show');
         return Inertia::render('BillingShow', [
             'billing' => $billing,
+            'isAdmin' => $isAdmin,
         ]);
     }
 
@@ -163,11 +165,19 @@ class BillingController extends Controller
         ]);
     }
 
-    // Export PDF
+    // Export PDF (Download)
     public function pdf(Billing $billing)
     {
         $billing->load(['patient', 'clinic', 'items']);
         $pdf = Pdf::loadView('pdf.invoice', ['billing' => $billing]);
         return $pdf->download('invoice_'.$billing->id.'.pdf');
+    }
+
+    // Export PDF (View in browser)
+    public function pdfView(Billing $billing)
+    {
+        $billing->load(['patient', 'clinic', 'items']);
+        $pdf = Pdf::loadView('pdf.invoice', ['billing' => $billing]);
+        return $pdf->stream('invoice_'.$billing->id.'.pdf');
     }
 } 

@@ -9,7 +9,7 @@ class PrescriptionController extends Controller
 {
     public function index(Request $request)
     {
-        $prescriptions = Prescription::where('patient_id', $request->user()->id)->get();
+        $prescriptions = Prescription::with('drug')->where('patient_id', $request->user()->id)->get();
         return Inertia::render('prescriptions', [
             'prescriptions' => $prescriptions
         ]);
@@ -21,7 +21,7 @@ class PrescriptionController extends Controller
         if (!$user || $user->role !== 'admin') {
             abort(403, 'Only admins can view all prescriptions.');
         }
-        $prescriptions = \App\Models\Prescription::with('patient')->orderByDesc('created_at')->get();
+        $prescriptions = \App\Models\Prescription::with(['patient', 'drug'])->orderByDesc('created_at')->get();
         return \Inertia\Inertia::render('AdminPrescriptions', [
             'prescriptions' => $prescriptions
         ]);

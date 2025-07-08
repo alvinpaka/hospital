@@ -34,6 +34,7 @@ class DatabaseSeeder extends Seeder
         // Seeders
         $this->call([
             LabResultSeeder::class,
+            DrugSeeder::class,
             PrescriptionSeeder::class,
             VisitSeeder::class,
             // ImmunizationSeeder::class, // Removed due to missing model
