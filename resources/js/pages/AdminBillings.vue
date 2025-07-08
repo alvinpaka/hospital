@@ -8,7 +8,6 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { useRouter } from '@inertiajs/vue3';
 import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from '@/components/ui/select';
 
 const page = usePage();
@@ -87,8 +86,8 @@ const printBill = (billingId: number) => {
 function getPageNumbers() {
   const pages = [];
   const maxPagesToShow = 5;
-  let startPage = Math.max(1, currentPage.value - Math.floor(maxPagesToShow / 2));
-  let endPage = Math.min(totalPages.value, startPage + maxPagesToShow - 1);
+  const startPage = Math.max(1, currentPage.value - Math.floor(maxPagesToShow / 2));
+  const endPage = Math.min(totalPages.value, startPage + maxPagesToShow - 1);
   // Always show page 1
   if (startPage > 1) {
     pages.push(1);

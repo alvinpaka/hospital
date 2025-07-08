@@ -369,7 +369,7 @@ function handleExportPDF() {
     });
     doc.save('vitals.pdf');
     toast.success('PDF exported');
-  } catch (e) {
+  } catch {
     toast.error('PDF export failed. Please ensure jsPDF is installed.');
   }
   showExportDialog.value = false;
@@ -429,7 +429,7 @@ function handleExportSinglePDF() {
     });
     doc.save(`vitals-${v.id}.pdf`);
     toast.success('PDF exported');
-  } catch (e) {
+  } catch {
     toast.error('PDF export failed. Please ensure jsPDF is installed.');
   }
   showSingleExportDialog.value = false;

@@ -15,7 +15,7 @@ import { toast } from 'vue-sonner';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
 import { CalendarIcon } from 'lucide-vue-next';
-import { DateFormatter, getLocalTimeZone, parseDate } from '@internationalized/date';
+import { DateFormatter, getLocalTimeZone } from '@internationalized/date';
 import { cn } from '@/lib/utils';
 import { Label } from '@/components/ui/label';
 import { jsPDF } from 'jspdf';
@@ -159,8 +159,6 @@ const showEditDialog = ref(false);
 const showDeleteDialog = ref(false);
 const showAssignDialog = ref(false);
 const showExportDialog = ref(false);
-const showSummaryDialog = ref(false);
-const summaryDialogText = ref('');
 const selectedVisit = ref<Visit | null>(null);
 
 // Edit Visit form state
@@ -273,10 +271,6 @@ function openAssignDialog(visit: Visit) {
 function openExportDialog() {
   showExportDialog.value = true;
 }
-function closeSummaryDialog() {
-  showSummaryDialog.value = false;
-  summaryDialogText.value = '';
-}
 
 // Bulk actions
 const showActivityLog = ref(false);
@@ -295,21 +289,6 @@ const filteredActivityLogs = computed(() => {
     );
   });
 });
-function activityLogSummary(log) {
-  if (log.action === 'assign' && log.details?.old_doctor !== undefined) {
-    return `Doctor changed from ${log.details.old_doctor} to ${log.details.new_doctor}`;
-  }
-  if (log.action === 'update' && log.details?.old && log.details?.new) {
-    return 'Record updated';
-  }
-  if (log.action === 'delete') {
-    return 'Record deleted';
-  }
-  if (log.action === 'export') {
-    return 'Exported records';
-  }
-  return '';
-}
 function subjectLink(log) {
   if (log.subject_type === 'Visit' && log.subject_id) {
     return `/admin/visits?id=${log.subject_id}`;
@@ -493,7 +472,7 @@ function handleExportPDF() {
     });
     doc.save('visits.pdf');
     toast.success('PDF exported');
-  } catch (e) {
+  } catch {
     toast.error('PDF export failed. Please ensure jsPDF is installed.');
   }
 }
@@ -565,11 +544,30 @@ function handleExportSinglePDF() {
     });
     doc.save(`visit-${v.id}.pdf`);
     toast.success('PDF exported');
-  } catch (e) {
+  } catch {
     toast.error('PDF export failed. Please ensure jsPDF is installed.');
   }
   showSingleExportDialog.value = false;
 }
+
+// Add computed properties for filtered log details
+const filteredLogDetails = computed(() => {
+  return (log) => {
+    if (typeof log.details === 'object' && log.details !== null) {
+      return Object.entries(log.details).filter(([, value]) => value !== null && value !== undefined);
+    }
+    return [];
+  };
+});
+
+const filteredSubValues = computed(() => {
+  return (value) => {
+    if (typeof value === 'object' && value !== null) {
+      return Object.entries(value).filter(([, subValue]) => subValue !== null && subValue !== undefined);
+    }
+    return [];
+  };
+});
 </script>
 
 <template>
@@ -837,13 +835,13 @@ function handleExportSinglePDF() {
                     <td class="border px-2 py-1">
                       <div v-if="typeof log.details === 'object' && log.details !== null">
                         <table class="text-xs w-full">
-                          <tr v-for="(value, key) in log.details" :key="key" v-if="value !== null && value !== undefined">
+                          <tr v-for="[key, value] in filteredLogDetails(log)" :key="key">
                             <td class="font-semibold align-top pr-2">{{ key }}:</td>
                             <td>
                               <span v-if="typeof value !== 'object'">{{ value }}</span>
                               <span v-else>
                                 <table class="ml-2 border-l border-gray-200">
-                                  <tr v-for="(subValue, subKey) in value" :key="subKey" v-if="subValue !== null && subValue !== undefined">
+                                  <tr v-for="[subKey, subValue] in filteredSubValues(value)" :key="subKey">
                                     <td class="font-semibold align-top pr-2">{{ subKey }}:</td>
                                     <td>{{ subValue }}</td>
                                   </tr>

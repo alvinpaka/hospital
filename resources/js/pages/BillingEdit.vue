@@ -15,7 +15,6 @@ import { Calendar } from '@/components/ui/calendar';
 const page = usePage();
 const billing = computed(() => page.props.billing);
 const patients = computed(() => page.props.patients || []);
-const clinics = computed(() => page.props.clinics || []);
 
 const form = ref({
   patient_id: billing.value.patient_id || '',

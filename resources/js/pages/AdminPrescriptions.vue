@@ -165,10 +165,6 @@ function closeInstructionsDialog() {
   showInstructionsDialog.value = false;
   instructionsDialogText.value = '';
 }
-function truncateInstructions(text: string, maxLength = 30) {
-  if (!text) return '';
-  return text.length > maxLength ? text.slice(0, maxLength) + '...' : text;
-}
 
 // Dummy handlers for actions (to be implemented)
 function handleEdit() { showEditDialog.value = false; }
@@ -273,7 +269,7 @@ function handleExportPDF() {
     });
     doc.save('prescriptions.pdf');
     toast.success('PDF exported');
-  } catch (e) {
+  } catch {
     toast.error('PDF export failed. Please ensure jsPDF is installed.');
   }
   showExportDialog.value = false;
@@ -333,7 +329,7 @@ function handleExportSinglePDF() {
     });
     doc.save(`prescription-${v.id}.pdf`);
     toast.success('PDF exported');
-  } catch (e) {
+  } catch {
     toast.error('PDF export failed. Please ensure jsPDF is installed.');
   }
   showSingleExportDialog.value = false;

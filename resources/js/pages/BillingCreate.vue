@@ -26,7 +26,6 @@ const form = ref({
 });
 
 const patientSearch = ref('');
-const selectedPatient = computed(() => patients.value.find(p => p.id === form.value.patient_id));
 const filteredPatients = computed(() => {
   if (!patientSearch.value) return patients.value;
   const search = patientSearch.value.toLowerCase();
