@@ -16,6 +16,8 @@ const breadcrumbs: BreadcrumbItem[] = [
 const page = usePage();
 const user = computed(() => page.props.user);
 const todayAppointments = computed(() => page.props.todayAppointments || []);
+const recentVisits = computed(() => page.props.recentVisits || []);
+const recentPrescriptions = computed(() => page.props.recentPrescriptions || []);
 const stats = computed(() => page.props.stats || {});
 const patientCount = computed(() => page.props.patientCount || 0);
 

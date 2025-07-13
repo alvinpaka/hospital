@@ -14,6 +14,10 @@ const statusFilter = ref('');
 const loading = ref(false);
 const error = ref(null);
 
+const breadcrumbs = [
+  { title: 'My Billings', href: '/my-billings' },
+];
+
 const filteredBillings = computed(() => {
   let result = billings.value;
   if (statusFilter.value) {

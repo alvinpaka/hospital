@@ -14,6 +14,10 @@ import { Skeleton } from '@/components/ui/skeleton';
 const page = usePage();
 const billings = computed(() => page.props.billings.data || []);
 
+const breadcrumbs = [
+  { title: 'Admin Billings', href: '/admin/billings' },
+];
+
 const statusFilter = ref('all');
 const search = ref('');
 

@@ -15,7 +15,7 @@ interface LabResult {
   date: string;
   type: string;
   result: string;
-  doctor: string;
+  doctor: string | { name: string };
   notes: string;
 }
 
@@ -58,25 +58,33 @@ onMounted(() => {
 
 const filteredLabResults = computed(() => {
   const query = searchQuery.value.toLowerCase();
-  return allLabResults.value.filter(result =>
-    result.type.toLowerCase().includes(query) ||
-    result.doctor.toLowerCase().includes(query) ||
-    result.result.toLowerCase().includes(query)
-  );
+  return allLabResults.value.filter(result => {
+    const doctorName = typeof result.doctor === 'string' ? result.doctor : result.doctor?.name || '';
+    return result.type.toLowerCase().includes(query) ||
+           doctorName.toLowerCase().includes(query) ||
+           result.result.toLowerCase().includes(query);
+  });
 });
 
 const sortedLabResults = computed(() => {
   return [...filteredLabResults.value].sort((a, b) => {
-    const aValue = a[sortColumn.value];
-    const bValue = b[sortColumn.value];
+    let aValue = a[sortColumn.value];
+    let bValue = b[sortColumn.value];
+    
+    // Handle doctor field which might be an object
+    if (sortColumn.value === 'doctor') {
+      aValue = typeof aValue === 'string' ? aValue : aValue?.name || '';
+      bValue = typeof bValue === 'string' ? bValue : bValue?.name || '';
+    }
+    
     if (sortColumn.value === 'date') {
       return sortDirection.value === 'asc'
         ? new Date(aValue).getTime() - new Date(bValue).getTime()
         : new Date(bValue).getTime() - new Date(aValue).getTime();
     }
     return sortDirection.value === 'asc'
-      ? aValue.localeCompare(bValue)
-      : bValue.localeCompare(aValue);
+      ? String(aValue).localeCompare(String(bValue))
+      : String(bValue).localeCompare(String(aValue));
   });
 });
 
@@ -248,7 +256,7 @@ function truncateNotes(text: string, maxLength = 60) {
                     <TableCell>{{ formatDate(item.date) }}</TableCell>
                     <TableCell>{{ item.type || 'N/A' }}</TableCell>
                     <TableCell>{{ item.result || 'N/A' }}</TableCell>
-                    <TableCell>{{ item.doctor || 'N/A' }}</TableCell>
+                    <TableCell>{{ typeof item.doctor === 'string' ? item.doctor : item.doctor?.name || 'N/A' }}</TableCell>
                     <TableCell>
                       <span v-if="item.notes && item.notes.length > 60">
                         {{ truncateNotes(item.notes) }}

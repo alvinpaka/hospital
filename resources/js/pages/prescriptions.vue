@@ -15,7 +15,7 @@ interface Prescription {
   medication: string;
   dosage: string;
   instructions: string;
-  doctor: string;
+  doctor: string | { name: string };
   start_date: string;
   end_date: string;
 }
@@ -48,25 +48,33 @@ onMounted(() => {
 
 const filteredPrescriptions = computed(() => {
   const query = searchQuery.value.toLowerCase();
-  return allPrescriptions.value.filter(prescription =>
-    (prescription.medication ?? '').toLowerCase().includes(query) ||
-    (prescription.doctor ?? '').toLowerCase().includes(query) ||
-    (prescription.dosage ?? '').toLowerCase().includes(query)
-  );
+  return allPrescriptions.value.filter(prescription => {
+    const doctorName = typeof prescription.doctor === 'string' ? prescription.doctor : prescription.doctor?.name || '';
+    return (prescription.medication ?? '').toLowerCase().includes(query) ||
+           doctorName.toLowerCase().includes(query) ||
+           (prescription.dosage ?? '').toLowerCase().includes(query);
+  });
 });
 
 const sortedPrescriptions = computed(() => {
   return [...filteredPrescriptions.value].sort((a, b) => {
-    const aValue = a[sortColumn.value];
-    const bValue = b[sortColumn.value];
+    let aValue = a[sortColumn.value];
+    let bValue = b[sortColumn.value];
+    
+    // Handle doctor field which might be an object
+    if (sortColumn.value === 'doctor') {
+      aValue = typeof aValue === 'string' ? aValue : aValue?.name || '';
+      bValue = typeof bValue === 'string' ? bValue : bValue?.name || '';
+    }
+    
     if (sortColumn.value === 'start_date' || sortColumn.value === 'end_date') {
       return sortDirection.value === 'asc'
         ? new Date(aValue).getTime() - new Date(bValue).getTime()
         : new Date(bValue).getTime() - new Date(aValue).getTime();
     }
     return sortDirection.value === 'asc'
-      ? aValue.localeCompare(bValue)
-      : bValue.localeCompare(aValue);
+      ? String(aValue).localeCompare(String(bValue))
+      : String(bValue).localeCompare(String(aValue));
   });
 });
 
@@ -250,7 +258,7 @@ function truncateInstructions(text: string, maxLength = 30) {
                       </span>
                       <span v-else>{{ item.instructions }}</span>
                     </TableCell>
-                    <TableCell>{{ item.doctor || 'N/A' }}</TableCell>
+                    <TableCell>{{ typeof item.doctor === 'string' ? item.doctor : item.doctor?.name || 'N/A' }}</TableCell>
                     <TableCell>{{ formatDate(item.start_date) }}</TableCell>
                     <TableCell>{{ formatDate(item.end_date) }}</TableCell>
                   </TableRow>

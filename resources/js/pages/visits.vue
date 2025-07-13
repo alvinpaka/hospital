@@ -12,7 +12,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 interface Visit {
   id: number;
   date: string;
-  doctor: string;
+  doctor: string | { name: string };
   reason: string;
 }
 
@@ -55,24 +55,32 @@ onMounted(() => {
 
 const filteredVisits = computed(() => {
   const query = searchQuery.value.toLowerCase();
-  return allVisits.value.filter(visit =>
-    (visit.doctor ?? '').toLowerCase().includes(query) ||
-    (visit.reason ?? '').toLowerCase().includes(query)
-  );
+  return allVisits.value.filter(visit => {
+    const doctorName = typeof visit.doctor === 'string' ? visit.doctor : visit.doctor?.name || '';
+    return doctorName.toLowerCase().includes(query) ||
+           (visit.reason ?? '').toLowerCase().includes(query);
+  });
 });
 
 const sortedVisits = computed(() => {
   return [...filteredVisits.value].sort((a, b) => {
-    const aValue = a[sortColumn.value];
-    const bValue = b[sortColumn.value];
+    let aValue = a[sortColumn.value];
+    let bValue = b[sortColumn.value];
+    
+    // Handle doctor field which might be an object
+    if (sortColumn.value === 'doctor') {
+      aValue = typeof aValue === 'string' ? aValue : aValue?.name || '';
+      bValue = typeof bValue === 'string' ? bValue : bValue?.name || '';
+    }
+    
     if (sortColumn.value === 'date') {
       return sortDirection.value === 'asc'
         ? new Date(aValue).getTime() - new Date(bValue).getTime()
         : new Date(bValue).getTime() - new Date(aValue).getTime();
     }
     return sortDirection.value === 'asc'
-      ? aValue.localeCompare(bValue)
-      : bValue.localeCompare(aValue);
+      ? String(aValue).localeCompare(String(bValue))
+      : String(bValue).localeCompare(String(aValue));
   });
 });
 
@@ -221,7 +229,7 @@ function getPageNumbers() {
                 <TableBody>
                   <TableRow v-for="item in paginatedVisits" :key="item.id" class="hover:bg-muted/50 transition-colors">
                     <TableCell>{{ formatDate(item.date) }}</TableCell>
-                    <TableCell>{{ item.doctor || 'N/A' }}</TableCell>
+                    <TableCell>{{ typeof item.doctor === 'string' ? item.doctor : item.doctor?.name || 'N/A' }}</TableCell>
                     <TableCell>{{ item.reason || 'N/A' }}</TableCell>
                   </TableRow>
                 </TableBody>

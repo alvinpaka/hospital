@@ -29,11 +29,21 @@ class DashboardController extends Controller
         $patientId = $user->id;
 
         $nextAppointment = Appointment::where('patient_id', $patientId)
-            ->where('date', '>=', now())
+            ->where('date', '>=', today())
+            ->whereIn('status', ['pending', 'confirmed'])
             ->orderBy('date')
             ->orderBy('time')
             ->with('doctor')
             ->first();
+
+        // Get all upcoming appointments for the count
+        $upcomingAppointments = Appointment::where('patient_id', $patientId)
+            ->where('date', '>=', today())
+            ->whereIn('status', ['confirmed'])
+            ->orderBy('date')
+            ->orderBy('time')
+            ->with('doctor')
+            ->get();
 
         $recentVisit = Visit::where('patient_id', $patientId)
             ->orderByDesc('date')
@@ -66,6 +76,7 @@ class DashboardController extends Controller
         return Inertia::render('Dashboard', [
             'user' => $user,
             'nextAppointment' => $nextAppointment,
+            'upcomingAppointments' => $upcomingAppointments,
             'recentVisit' => $recentVisit,
             'latestLabResult' => $latestLabResult,
             'currentPrescription' => $currentPrescription,

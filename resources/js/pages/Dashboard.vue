@@ -18,6 +18,7 @@ const breadcrumbs: BreadcrumbItem[] = [
 const page = usePage();
 const user = computed(() => page.props.user);
 const nextAppointment = computed(() => page.props.nextAppointment);
+const upcomingAppointments = computed(() => page.props.upcomingAppointments ?? []);
 const recentVisit = computed(() => page.props.recentVisit);
 const latestLabResult = computed(() => page.props.latestLabResult);
 const currentPrescription = computed(() => page.props.currentPrescription);
@@ -93,7 +94,7 @@ function getCurrentDate() {
                                             </svg>
                                         </div>
                                         <div class="text-right">
-                                            <div class="text-2xl font-bold">{{ nextAppointment?.date ? 1 : 0 }}</div>
+                                            <div class="text-2xl font-bold">{{ upcomingAppointments.length }}</div>
                                             <div class="text-blue-100 text-sm">Upcoming</div>
                                         </div>
                                     </div>
