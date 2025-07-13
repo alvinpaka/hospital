@@ -33,10 +33,46 @@ class PatientController extends Controller
             });
         }
 
-        $patients = $query->orderBy('created_at', 'desc')
-            ->paginate($perPage, ['id', 'name', 'email', 'phone', 'email_verified_at', 'created_at']);
+        // Eager load patientDoctors with all necessary fields for the pivot to work
+        $patients = $query->with(['patientDoctors' => function($q) {
+            $q->select('users.id', 'users.name', 'users.email', 'users.role', 'doctor_patient.doctor_id');
+        }])->orderBy('created_at', 'desc')
+          ->paginate($perPage);
+
+        // Ensure patient_id is included for the pivot
+        $patients->getCollection()->transform(function ($patient) {
+            $patient->patientDoctors->each(function ($doctor) use ($patient) {
+                $doctor->pivot->patient_id = $patient->id;
+            });
+            return $patient;
+        });
 
         return response()->json($patients);
+    }
+
+    /**
+     * Display a listing of patients assigned to the current doctor/nurse
+     */
+    public function myPatients(Request $request)
+    {
+        $user = $request->user();
+        if (!$user || !in_array($user->role, ['doctor', 'nurse'])) {
+            abort(403, 'Only doctors and nurses can view their assigned patients.');
+        }
+        $perPage = $request->get('per_page', 15);
+        $search = $request->get('search', '');
+        $query = $user->doctorPatients();
+        if ($search) {
+            $query->where(function($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%")
+                  ->orWhere('email', 'like', "%{$search}%")
+                  ->orWhere('phone', 'like', "%{$search}%");
+            });
+        }
+        $patients = $query->with(['patientDoctors' => function($q) {
+            $q->select('users.id', 'users.name', 'users.email', 'users.role', 'doctor_patient.doctor_id');
+        }])->orderBy('created_at', 'desc')->paginate($perPage);
+        return response()->json(['patients' => $patients]);
     }
 
     /**
@@ -151,6 +187,22 @@ class PatientController extends Controller
         }
 
         $patient->delete();
+        return response()->json(['success' => true]);
+    }
+
+    /**
+     * Unassign a doctor/nurse from a patient
+     */
+    public function unassignDoctor(Request $request, $patientId, $doctorId)
+    {
+        $user = $request->user();
+        if (!$user || $user->role !== 'admin') {
+            abort(403, 'Only admins can unassign doctors/nurses.');
+        }
+
+        $patient = User::findOrFail($patientId);
+        $patient->patientDoctors()->detach($doctorId);
+
         return response()->json(['success' => true]);
     }
 } 

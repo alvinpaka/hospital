@@ -4,7 +4,7 @@
             <g v-for="(slice, index) in pieSlices" :key="index">
                 <path :d="slice.path" :fill="slice.color" />
                 <text :x="slice.labelX" :y="slice.labelY" 
-                      text-anchor="middle" font-size="12" fill="white">
+                      text-anchor="middle" font-size="12" :fill="textColor">
                     {{ slice.percentage }}%
                 </text>
             </g>
@@ -13,7 +13,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, ref, onMounted, onUnmounted } from 'vue';
 
 interface Props {
     data?: {
@@ -25,6 +25,25 @@ interface Props {
 }
 
 const props = defineProps<Props>();
+
+const isDark = ref(false);
+
+function updateTheme() {
+    isDark.value = document.documentElement.classList.contains('dark');
+}
+
+let observer: MutationObserver | null = null;
+
+onMounted(() => {
+    updateTheme();
+    observer = new MutationObserver(() => updateTheme());
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
+});
+onUnmounted(() => {
+    if (observer) observer.disconnect();
+});
+
+const textColor = computed(() => (isDark.value ? '#fff' : '#222'));
 
 const pieSlices = computed(() => {
     if (!props.data) return [];

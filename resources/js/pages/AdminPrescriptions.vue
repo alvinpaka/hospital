@@ -7,7 +7,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Badge } from '@/components/ui/badge';
+
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { jsPDF } from 'jspdf';
@@ -339,38 +339,57 @@ function handleExportSinglePDF() {
 <template>
   <Head title="Admin Prescriptions" />
   <AppLayout :breadcrumbs="breadcrumbs">
-    <div class="max-w-screen-xl mx-auto py-6 px-4 sm:px-6 lg:px-8 min-h-[70vh]">
-      <div v-if="user && user.role === 'admin'">
-        <div class="space-y-2 mb-8">
-          <div class="flex items-center justify-between">
-            <h1 class="text-3xl font-bold tracking-tight flex items-center gap-2">
-              <span>All Prescriptions</span>
-              <Badge variant="secondary">Admin</Badge>
-            </h1>
-            <div class="flex gap-2">
-              <Input
-                v-model="searchQuery"
-                placeholder="Search by medication, doctor, patient, or dosage..."
-                class="max-w-sm"
-              />
-              <Button variant="outline" @click="openExportDialog">Export</Button>
+    <div class="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 dark:from-gray-900 dark:via-gray-800 dark:to-purple-900">
+      <div class="max-w-screen-xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
+        <!-- Header -->
+        <div class="relative overflow-hidden bg-gradient-to-r from-blue-600 via-purple-600 to-blue-800 rounded-3xl p-8 mb-8 shadow-2xl">
+          <div class="absolute inset-0 bg-black opacity-10"></div>
+          <div class="absolute -top-4 -right-4 w-24 h-24 bg-white opacity-10 rounded-full blur-xl"></div>
+          <div class="absolute -bottom-4 -left-4 w-32 h-32 bg-white opacity-5 rounded-full blur-xl"></div>
+          <div class="relative z-10">
+            <div class="flex items-center gap-4 mb-4">
+              <div class="w-16 h-16 bg-white bg-opacity-20 rounded-2xl flex items-center justify-center backdrop-blur-sm">
+                <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                </svg>
+              </div>
+              <div>
+                <h1 class="text-4xl font-bold text-white">All Prescriptions</h1>
+                <p class="text-blue-100 text-lg">Admin Panel</p>
+              </div>
             </div>
+            <p class="text-blue-100 text-lg">
+              View, edit, assign, delete, and export all prescriptions in the system.
+            </p>
           </div>
-          <p class="text-muted-foreground text-sm">View, edit, assign, delete, and export all prescriptions in the system.</p>
         </div>
-        <Card v-if="error">
-          <CardContent class="p-6 text-center text-red-600">
+        <!-- Search/Filters and Export -->
+        <Card class="rounded-3xl border-0 shadow-xl bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm mb-8">
+          <CardContent class="p-6 flex flex-col md:flex-row md:items-center gap-4">
+            <Input
+              v-model="searchQuery"
+              placeholder="Search by medication, doctor, patient, or dosage..."
+              class="max-w-md"
+            />
+            <Button variant="outline" @click="openExportDialog" class="ml-auto">Export</Button>
+          </CardContent>
+        </Card>
+        <!-- Error Display -->
+        <Card v-if="error" class="rounded-3xl border-0 shadow-xl bg-red-50 dark:bg-red-900/80 mb-6">
+          <CardContent class="p-4 text-center text-red-600">
             {{ error }}
           </CardContent>
         </Card>
-        <Card v-else-if="loading">
+        <!-- Loading State -->
+        <Card v-else-if="loading" class="rounded-3xl border-0 shadow-xl bg-white/80 dark:bg-gray-900/80 mb-6">
           <CardContent class="p-6 space-y-4">
             <Skeleton class="h-8 w-full" />
             <Skeleton class="h-8 w-full" />
             <Skeleton class="h-8 w-full" />
           </CardContent>
         </Card>
-        <Card v-else-if="filteredPrescriptions.length === 0">
+        <!-- Empty State -->
+        <Card v-else-if="filteredPrescriptions.length === 0" class="rounded-3xl border-0 shadow-xl bg-white/80 dark:bg-gray-900/80 mb-6">
           <CardContent class="p-6 text-center flex flex-col items-center">
             <svg width="80" height="80" fill="none" viewBox="0 0 80 80" class="mb-4">
               <rect width="80" height="80" rx="16" fill="#e3f2fd"/>
@@ -380,115 +399,118 @@ function handleExportSinglePDF() {
             <p class="text-sm mt-2 text-muted-foreground">No prescriptions in the system.</p>
           </CardContent>
         </Card>
-        <Card v-else>
+        <!-- Prescriptions Table -->
+        <Card v-else class="rounded-3xl border-0 shadow-xl bg-white/80 dark:bg-gray-900/80 mb-6">
           <CardHeader>
             <CardTitle>All Prescriptions</CardTitle>
           </CardHeader>
-          <div class="overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead class="cursor-pointer" @click="toggleSort('medication')">
-                    Medication
-                    <span v-if="sortColumn === 'medication'" class="ml-1">
-                      {{ sortDirection === 'asc' ? '↑' : '↓' }}
-                    </span>
-                  </TableHead>
-                  <TableHead class="cursor-pointer" @click="toggleSort('dosage')">
-                    Dosage
-                    <span v-if="sortColumn === 'dosage'" class="ml-1">
-                      {{ sortDirection === 'asc' ? '↑' : '↓' }}
-                    </span>
-                  </TableHead>
-                  <TableHead class="cursor-pointer" @click="toggleSort('doctor')">
-                    Doctor
-                    <span v-if="sortColumn === 'doctor'" class="ml-1">
-                      {{ sortDirection === 'asc' ? '↑' : '↓' }}
-                    </span>
-                  </TableHead>
-                  <TableHead class="cursor-pointer" @click="toggleSort('patient')">
-                    Patient
-                  </TableHead>
-                  <TableHead class="cursor-pointer" @click="toggleSort('start_date')">
-                    Start Date
-                    <span v-if="sortColumn === 'start_date'" class="ml-1">
-                      {{ sortDirection === 'asc' ? '↑' : '↓' }}
-                    </span>
-                  </TableHead>
-                  <TableHead class="cursor-pointer" @click="toggleSort('end_date')">
-                    End Date
-                    <span v-if="sortColumn === 'end_date'" class="ml-1">
-                      {{ sortDirection === 'asc' ? '↑' : '↓' }}
-                    </span>
-                  </TableHead>
-                  <TableHead>Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                <TableRow v-for="item in paginatedPrescriptions" :key="item.id" class="hover:bg-muted/50 transition-colors">
-                  <TableCell>{{ item.drug?.generic_name || 'N/A' }}</TableCell>
-                  <TableCell>{{ item.dosage || 'N/A' }}</TableCell>
-                  <TableCell>{{ item.doctor || 'N/A' }}</TableCell>
-                  <TableCell>{{ item.patient?.name || 'N/A' }}</TableCell>
-                  <TableCell>{{ formatDate(item.start_date) }}</TableCell>
-                  <TableCell>{{ formatDate(item.end_date) }}</TableCell>
-                  <TableCell>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="sm" class="h-8 w-8 p-0">
-                          <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" />
-                          </svg>
-                          <span class="sr-only">Open menu</span>
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end" class="w-48">
-                        <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem @click="openEditDialog(item)">Edit</DropdownMenuItem>
-                        <DropdownMenuItem @click="openAssignDialog(item)">Assign</DropdownMenuItem>
-                        <DropdownMenuItem @click="handleExportSingle(item.id)">Export</DropdownMenuItem>
-                        <DropdownMenuItem @click="openInstructionsDialog(item.instructions)">View Instructions</DropdownMenuItem>
-                        <DropdownMenuItem @click="openDeleteDialog(item)" class="text-red-600 focus:text-red-600">Delete</DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </TableCell>
-                </TableRow>
-              </TableBody>
-            </Table>
-          </div>
-          <div class="flex flex-col sm:flex-row justify-between items-center p-4 border-t gap-4">
-            <span class="text-sm text-muted-foreground">
-              Showing {{ (page - 1) * pageSize + 1 }} to {{ Math.min(page * pageSize, filteredPrescriptions.length) }} of {{ filteredPrescriptions.length }} prescriptions
-            </span>
-            <div class="flex gap-2 flex-wrap justify-center">
-              <Button 
-                :disabled="page === 1" 
-                variant="outline" 
-                size="sm" 
-                @click="page--"
-              >
-                Prev
-              </Button>
-              <Button
-                v-for="pageNumber in getPageNumbers()"
-                :key="pageNumber"
-                :variant="page === pageNumber ? 'default' : 'outline'"
-                size="sm"
-                @click="goToPage(pageNumber)"
-              >
-                {{ pageNumber }}
-              </Button>
-              <Button 
-                :disabled="page === totalPages || totalPages === 0" 
-                variant="outline" 
-                size="sm" 
-                @click="page++"
-              >
-                Next
-              </Button>
+          <CardContent>
+            <div class="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead class="cursor-pointer" @click="toggleSort('medication')">
+                      Medication
+                      <span v-if="sortColumn === 'medication'" class="ml-1">
+                        {{ sortDirection === 'asc' ? '↑' : '↓' }}
+                      </span>
+                    </TableHead>
+                    <TableHead class="cursor-pointer" @click="toggleSort('dosage')">
+                      Dosage
+                      <span v-if="sortColumn === 'dosage'" class="ml-1">
+                        {{ sortDirection === 'asc' ? '↑' : '↓' }}
+                      </span>
+                    </TableHead>
+                    <TableHead class="cursor-pointer" @click="toggleSort('doctor')">
+                      Doctor
+                      <span v-if="sortColumn === 'doctor'" class="ml-1">
+                        {{ sortDirection === 'asc' ? '↑' : '↓' }}
+                      </span>
+                    </TableHead>
+                    <TableHead class="cursor-pointer" @click="toggleSort('patient')">
+                      Patient
+                    </TableHead>
+                    <TableHead class="cursor-pointer" @click="toggleSort('start_date')">
+                      Start Date
+                      <span v-if="sortColumn === 'start_date'" class="ml-1">
+                        {{ sortDirection === 'asc' ? '↑' : '↓' }}
+                      </span>
+                    </TableHead>
+                    <TableHead class="cursor-pointer" @click="toggleSort('end_date')">
+                      End Date
+                      <span v-if="sortColumn === 'end_date'" class="ml-1">
+                        {{ sortDirection === 'asc' ? '↑' : '↓' }}
+                      </span>
+                    </TableHead>
+                    <TableHead>Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  <TableRow v-for="item in paginatedPrescriptions" :key="item.id" class="hover:bg-muted/50 transition-colors">
+                    <TableCell>{{ item.drug?.generic_name || 'N/A' }}</TableCell>
+                    <TableCell>{{ item.dosage || 'N/A' }}</TableCell>
+                    <TableCell>{{ item.doctor || 'N/A' }}</TableCell>
+                    <TableCell>{{ item.patient?.name || 'N/A' }}</TableCell>
+                    <TableCell>{{ formatDate(item.start_date) }}</TableCell>
+                    <TableCell>{{ formatDate(item.end_date) }}</TableCell>
+                    <TableCell>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="sm" class="h-8 w-8 p-0">
+                            <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" />
+                            </svg>
+                            <span class="sr-only">Open menu</span>
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" class="w-48">
+                          <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem @click="openEditDialog(item)">Edit</DropdownMenuItem>
+                          <DropdownMenuItem @click="openAssignDialog(item)">Assign</DropdownMenuItem>
+                          <DropdownMenuItem @click="handleExportSingle(item.id)">Export</DropdownMenuItem>
+                          <DropdownMenuItem @click="openInstructionsDialog(item.instructions)">View Instructions</DropdownMenuItem>
+                          <DropdownMenuItem @click="openDeleteDialog(item)" class="text-red-600 focus:text-red-600">Delete</DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </TableCell>
+                  </TableRow>
+                </TableBody>
+              </Table>
             </div>
-          </div>
+            <div class="flex flex-col sm:flex-row justify-between items-center p-4 border-t gap-4">
+              <span class="text-sm text-muted-foreground">
+                Showing {{ (page - 1) * pageSize + 1 }} to {{ Math.min(page * pageSize, filteredPrescriptions.length) }} of {{ filteredPrescriptions.length }} prescriptions
+              </span>
+              <div class="flex gap-2 flex-wrap justify-center">
+                <Button 
+                  :disabled="page === 1" 
+                  variant="outline" 
+                  size="sm" 
+                  @click="page--"
+                >
+                  Prev
+                </Button>
+                <Button
+                  v-for="pageNumber in getPageNumbers()"
+                  :key="pageNumber"
+                  :variant="page === pageNumber ? 'default' : 'outline'"
+                  size="sm"
+                  @click="goToPage(pageNumber)"
+                >
+                  {{ pageNumber }}
+                </Button>
+                <Button 
+                  :disabled="page === totalPages || totalPages === 0" 
+                  variant="outline" 
+                  size="sm" 
+                  @click="page++"
+                >
+                  Next
+                </Button>
+              </div>
+            </div>
+          </CardContent>
         </Card>
         <!-- Edit Dialog -->
         <Dialog v-model:open="showEditDialog">
@@ -590,13 +612,6 @@ function handleExportSinglePDF() {
             </DialogFooter>
           </DialogContent>
         </Dialog>
-      </div>
-      <div v-else>
-        <Card>
-          <CardContent class="p-6 text-center text-red-600">
-            You do not have permission to view this page.
-          </CardContent>
-        </Card>
       </div>
     </div>
   </AppLayout>

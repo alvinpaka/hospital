@@ -2,7 +2,7 @@
 import AppLayout from '@/layouts/AppLayout.vue';
 import { Head, Link, usePage } from '@inertiajs/vue3';
 import { computed, onMounted } from 'vue';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 
@@ -52,22 +52,24 @@ onMounted(() => {
 <template>
   <Head :title="`Bill #${billing.id}`" />
   <AppLayout>
-    <div class="max-w-2xl mx-auto p-4 flex flex-col gap-6 print:bg-white">
-      <div class="flex items-center justify-between print:hidden">
-        <h1 class="text-2xl font-bold tracking-tight">Bill Details</h1>
-        <Button asChild variant="outline">
-          <Link :href="isAdmin ? '/admin/billings' : '/my-billings'">Back</Link>
-        </Button>
-      </div>
-      <Card class="shadow print:shadow-none print:border print:border-gray-300">
-        <CardHeader class="flex flex-col items-center gap-2">
-          <CardTitle class="text-xl">Invoice</CardTitle>
-          <div class="flex gap-4 items-center">
-            <span class="text-sm text-muted-foreground">Bill #{{ billing.id }}</span>
-            <Badge :variant="statusBadge(billing.status)">{{ billing.status.charAt(0).toUpperCase() + billing.status.slice(1) }}</Badge>
+    <div class="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-100 via-white to-blue-200 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900 py-8 print:bg-white">
+      <div class="w-full max-w-2xl mx-auto">
+        <!-- Gradient Header (hidden on print) -->
+        <div class="rounded-t-2xl px-8 py-6 text-center bg-gradient-to-r from-blue-500 via-sky-400 to-cyan-400 dark:from-blue-900 dark:via-blue-800 dark:to-cyan-900 shadow-lg flex items-center justify-between print:hidden">
+          <h1 class="text-2xl font-bold text-white tracking-tight">Bill Details</h1>
+          <Button asChild variant="outline" class="bg-white/20 text-white border-white/30 hover:bg-white/30">
+            <Link :href="isAdmin ? '/admin/billings' : '/my-billings'">Back</Link>
+          </Button>
+        </div>
+        <!-- Card -->
+        <div class="bg-white dark:bg-slate-900 shadow-xl rounded-b-2xl px-8 py-10 print:shadow-none print:border print:border-gray-300">
+          <div class="flex flex-col items-center gap-2 mb-6">
+            <CardTitle class="text-xl">Invoice</CardTitle>
+            <div class="flex gap-4 items-center">
+              <span class="text-sm text-muted-foreground">Bill #{{ billing.id }}</span>
+              <Badge :variant="statusBadge(billing.status)">{{ billing.status.charAt(0).toUpperCase() + billing.status.slice(1) }}</Badge>
+            </div>
           </div>
-        </CardHeader>
-        <CardContent>
           <div class="mb-4 flex flex-col md:flex-row md:justify-between gap-2">
             <div>
               <div class="font-semibold">Billed To:</div>
@@ -83,8 +85,8 @@ onMounted(() => {
             <div class="font-semibold">Description:</div>
             <div>{{ billing.description || '-' }}</div>
           </div>
-          <div class="overflow-x-auto">
-            <table class="min-w-full border border-gray-200">
+          <div class="overflow-x-auto mb-6">
+            <table class="min-w-full border border-gray-200 rounded-xl overflow-hidden">
               <thead>
                 <tr class="bg-muted">
                   <th class="px-3 py-2 text-left">#</th>
@@ -111,7 +113,7 @@ onMounted(() => {
               </tfoot>
             </table>
           </div>
-          <div class="flex justify-end gap-2 mt-6 print:hidden">
+          <div class="flex justify-end gap-2 mt-6 print:hidden border-t pt-6">
             <Button variant="outline" @click="printInvoice">Print</Button>
             <Button variant="outline" asChild>
               <a :href="pdfUrl()" target="_blank">Download PDF</a>
@@ -120,8 +122,8 @@ onMounted(() => {
               <a :href="pdfViewUrl()" target="_blank">View PDF</a>
             </Button>
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
     </div>
   </AppLayout>
 </template>

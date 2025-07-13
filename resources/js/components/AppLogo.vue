@@ -5,7 +5,11 @@ import { computed } from 'vue';
 
 const page = usePage();
 const user = computed(() => page.props.auth.user);
-const dashboardUrl = computed(() => user.value?.role === 'admin' ? '/admin/dashboard' : '/dashboard');
+const dashboardUrl = computed(() => {
+    if (user.value?.role === 'admin') return '/admin/dashboard';
+    if (['doctor', 'nurse'].includes(user.value?.role)) return '/staff/dashboard';
+    return '/dashboard';
+});
 </script>
 
 <template>

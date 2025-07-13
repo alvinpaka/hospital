@@ -4,7 +4,7 @@ import NavUser from '@/components/NavUser.vue';
 import { Sidebar, SidebarContent, SidebarFooter, SidebarHeader, SidebarMenu, SidebarMenuButton, SidebarMenuItem } from '@/components/ui/sidebar';
 import { type NavItem } from '@/types';
 import { Link, usePage } from '@inertiajs/vue3';
-import { Folder, LayoutGrid, Calendar, FileText, Users, DollarSign } from 'lucide-vue-next';
+import { Folder, LayoutGrid, Calendar, FileText, Users, DollarSign, Stethoscope, Activity } from 'lucide-vue-next';
 import AppLogo from './AppLogo.vue';
 import { usePrescriptionBlink } from '@/composables/usePrescriptionBlink';
 import { useAppointmentBlink } from '@/composables/useAppointmentBlink';
@@ -104,8 +104,49 @@ const adminNavItems: NavItem[] = [
     },
 ];
 
+const staffNavItems: NavItem[] = [
+    {
+        title: 'Staff Dashboard',
+        href: '/staff/dashboard',
+        icon: LayoutGrid,
+    },
+    {
+        title: 'My Appointments',
+        href: '/staff/appointments',
+        icon: Calendar,
+        blink: appointmentBlink,
+    },
+    {
+        title: 'My Patients',
+        href: '/staff/patients',
+        icon: Users,
+    },
+    {
+        title: 'My Prescriptions',
+        href: '/staff/prescriptions',
+        icon: FileText,
+        blink: prescriptionBlink,
+    },
+    {
+        title: 'My Lab Results',
+        href: '/staff/lab-results',
+        icon: Folder,
+    },
+    {
+        title: 'My Vitals',
+        href: '/staff/vitals',
+        icon: Activity,
+    },
+    {
+        title: 'My Visits',
+        href: '/staff/visits',
+        icon: Stethoscope,
+    },
+];
+
 const mainNavItems: NavItem[] = user?.role === 'patient' ? patientNavItems : 
-                                user?.role === 'admin' ? adminNavItems : [
+                                user?.role === 'admin' ? adminNavItems : 
+                                ['doctor', 'nurse'].includes(user?.role) ? staffNavItems : [
     {
         title: 'Dashboard',
         href: '/dashboard',

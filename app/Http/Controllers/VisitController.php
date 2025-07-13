@@ -36,8 +36,7 @@ class VisitController extends Controller
         $data = $request->validate([
             'date' => 'required|date',
             'reason' => 'required|string|max:255',
-            'doctor' => 'required|string|max:255',
-            'notes' => 'nullable|string',
+            'doctor_id' => 'required|exists:users,id',
         ]);
         $visit->update($data);
         return response()->json(['success' => true, 'visit' => $visit->fresh('patient')]);
@@ -98,7 +97,6 @@ class VisitController extends Controller
         ]);
         $visit = Visit::create([
             'patient_id' => $data['patient_id'],
-            'doctor' => '', // deprecated, but keep for compatibility
             'doctor_id' => $data['doctor_id'],
             'date' => $data['date'],
             'reason' => $data['reason'],
