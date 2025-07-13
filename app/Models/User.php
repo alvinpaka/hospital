@@ -116,4 +116,24 @@ class User extends Authenticatable
     {
         return $this->belongsTo(Clinic::class);
     }
+
+    /**
+     * The doctors/nurses assigned to this patient.
+     */
+    public function patientDoctors()
+    {
+        return $this->belongsToMany(User::class, 'doctor_patient', 'patient_id', 'doctor_id')
+            ->withPivot('role', 'assigned_at')
+            ->withTimestamps();
+    }
+
+    /**
+     * The patients assigned to this doctor/nurse.
+     */
+    public function doctorPatients()
+    {
+        return $this->belongsToMany(User::class, 'doctor_patient', 'doctor_id', 'patient_id')
+            ->withPivot('role', 'assigned_at')
+            ->withTimestamps();
+    }
 }

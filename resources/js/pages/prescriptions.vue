@@ -7,7 +7,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Badge } from '@/components/ui/badge';
+
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 
 interface Prescription {
@@ -137,146 +137,173 @@ function truncateInstructions(text: string, maxLength = 30) {
 <template>
   <Head title="Prescriptions" />
   <AppLayout :breadcrumbs="breadcrumbs">
-    <div class="max-w-screen-xl mx-auto py-6 px-4 sm:px-6 lg:px-8 min-h-[70vh]">
-      <div class="space-y-2 mb-8">
-        <div class="flex items-center justify-between">
-          <h1 class="text-3xl font-bold tracking-tight flex items-center gap-2">
-            <span>My Prescriptions</span>
-            <Badge variant="secondary">Patient</Badge>
-          </h1>
-          <Input
-            v-model="searchQuery"
-            placeholder="Search by medication, doctor, or dosage..."
-            class="max-w-sm"
-          />
-        </div>
-        <p class="text-muted-foreground text-sm">View and manage your prescriptions.</p>
-      </div>
-      <Card v-if="error">
-        <CardContent class="p-6 text-center text-red-600">
-          {{ error }}
-        </CardContent>
-      </Card>
-      <Card v-else-if="loading">
-        <CardContent class="p-6 space-y-4">
-          <Skeleton class="h-8 w-full" />
-          <Skeleton class="h-8 w-full" />
-          <Skeleton class="h-8 w-full" />
-        </CardContent>
-      </Card>
-      <Card v-else-if="filteredPrescriptions.length === 0">
-        <CardContent class="p-6 text-center flex flex-col items-center">
-          <svg width="80" height="80" fill="none" viewBox="0 0 80 80" class="mb-4">
-            <rect width="80" height="80" rx="16" fill="#e3f2fd"/>
-            <path d="M24 40h32M40 24v32" stroke="#1976d2" stroke-width="4" stroke-linecap="round"/>
-          </svg>
-          <p class="text-lg font-semibold">No prescriptions found.</p>
-          <p class="text-sm mt-2 text-muted-foreground">Your prescriptions will appear here.</p>
-        </CardContent>
-      </Card>
-      <Card v-else>
-        <CardHeader>
-          <CardTitle>Prescription History</CardTitle>
-        </CardHeader>
-        <div class="overflow-x-auto">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead class="cursor-pointer" @click="toggleSort('medication')">
-                  Medication
-                  <span v-if="sortColumn === 'medication'" class="ml-1">
-                    {{ sortDirection === 'asc' ? '↑' : '↓' }}
-                  </span>
-                </TableHead>
-                <TableHead class="cursor-pointer" @click="toggleSort('dosage')">
-                  Dosage
-                  <span v-if="sortColumn === 'dosage'" class="ml-1">
-                    {{ sortDirection === 'asc' ? '↑' : '↓' }}
-                  </span>
-                </TableHead>
-                <TableHead>Instructions</TableHead>
-                <TableHead class="cursor-pointer" @click="toggleSort('doctor')">
-                  Doctor
-                  <span v-if="sortColumn === 'doctor'" class="ml-1">
-                    {{ sortDirection === 'asc' ? '↑' : '↓' }}
-                  </span>
-                </TableHead>
-                <TableHead class="cursor-pointer" @click="toggleSort('start_date')">
-                  Start Date
-                  <span v-if="sortColumn === 'start_date'" class="ml-1">
-                    {{ sortDirection === 'asc' ? '↑' : '↓' }}
-                  </span>
-                </TableHead>
-                <TableHead class="cursor-pointer" @click="toggleSort('end_date')">
-                  End Date
-                  <span v-if="sortColumn === 'end_date'" class="ml-1">
-                    {{ sortDirection === 'asc' ? '↑' : '↓' }}
-                  </span>
-                </TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              <TableRow v-for="item in paginatedPrescriptions" :key="item.id" class="hover:bg-muted/50 transition-colors">
-                <TableCell>{{ item.drug?.generic_name || item.drug?.generic_name || 'N/A' }}</TableCell>
-                <TableCell>{{ item.dosage || 'N/A' }}</TableCell>
-                <TableCell>
-                  <span v-if="item.instructions && item.instructions.length > 30">
-                    {{ truncateInstructions(item.instructions) }}
-                    <Button variant="link" size="sm" class="px-1 py-0 h-auto align-baseline" @click="openInstructionsDialog(item.instructions)">View More</Button>
-                  </span>
-                  <span v-else>{{ item.instructions }}</span>
-                </TableCell>
-                <TableCell>{{ item.doctor || 'N/A' }}</TableCell>
-                <TableCell>{{ formatDate(item.start_date) }}</TableCell>
-                <TableCell>{{ formatDate(item.end_date) }}</TableCell>
-              </TableRow>
-            </TableBody>
-          </Table>
-        </div>
-        <div class="flex flex-col sm:flex-row justify-between items-center p-4 border-t gap-4">
-          <span class="text-sm text-muted-foreground">
-            Showing {{ (page - 1) * pageSize + 1 }} to {{ Math.min(page * pageSize, filteredPrescriptions.length) }} of {{ filteredPrescriptions.length }} prescriptions
-          </span>
-          <div class="flex gap-2 flex-wrap justify-center">
-            <Button 
-              :disabled="page === 1" 
-              variant="outline" 
-              size="sm" 
-              @click="page--"
-            >
-              Prev
-            </Button>
-            <Button
-              v-for="pageNumber in getPageNumbers()"
-              :key="pageNumber"
-              :variant="page === pageNumber ? 'default' : 'outline'"
-              size="sm"
-              @click="goToPage(pageNumber)"
-            >
-              {{ pageNumber }}
-            </Button>
-            <Button 
-              :disabled="page === totalPages || totalPages === 0" 
-              variant="outline" 
-              size="sm" 
-              @click="page++"
-            >
-              Next
-            </Button>
+    <div class="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 dark:from-gray-900 dark:via-gray-800 dark:to-purple-900">
+      <div class="max-w-screen-xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
+        <!-- Header -->
+        <div class="relative overflow-hidden bg-gradient-to-r from-blue-600 via-purple-600 to-blue-800 rounded-3xl p-8 mb-8 shadow-2xl">
+          <div class="absolute inset-0 bg-black opacity-10"></div>
+          <div class="absolute -top-4 -right-4 w-24 h-24 bg-white opacity-10 rounded-full blur-xl"></div>
+          <div class="absolute -bottom-4 -left-4 w-32 h-32 bg-white opacity-5 rounded-full blur-xl"></div>
+          <div class="relative z-10">
+            <div class="flex items-center gap-4 mb-4">
+              <div class="w-16 h-16 bg-white bg-opacity-20 rounded-2xl flex items-center justify-center backdrop-blur-sm">
+                <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                </svg>
+              </div>
+              <div>
+                <h1 class="text-4xl font-bold text-white">My Prescriptions</h1>
+                <p class="text-blue-100 text-lg">Patient Panel</p>
+              </div>
+            </div>
+            <p class="text-blue-100 text-lg">
+              View and manage your prescriptions.
+            </p>
           </div>
         </div>
-      </Card>
-      <Dialog v-model:open="showInstructionsDialog">
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Prescription Instructions</DialogTitle>
-          </DialogHeader>
-          <div class="whitespace-pre-line text-base">{{ instructionsDialogText }}</div>
-          <DialogFooter>
-            <Button variant="outline" @click="closeInstructionsDialog">Close</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+        <!-- Search -->
+        <Card class="rounded-3xl border-0 shadow-xl bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm mb-8">
+          <CardContent class="p-6 flex flex-col md:flex-row md:items-center gap-4">
+            <Input
+              v-model="searchQuery"
+              placeholder="Search by medication, doctor, or dosage..."
+              class="max-w-md"
+            />
+          </CardContent>
+        </Card>
+        <!-- Error Display -->
+        <Card v-if="error" class="rounded-3xl border-0 shadow-xl bg-red-50 dark:bg-red-900/80 mb-6">
+          <CardContent class="p-4 text-center text-red-600">
+            {{ error }}
+          </CardContent>
+        </Card>
+        <!-- Loading State -->
+        <Card v-else-if="loading" class="rounded-3xl border-0 shadow-xl bg-white/80 dark:bg-gray-900/80 mb-6">
+          <CardContent class="p-6 space-y-4">
+            <Skeleton class="h-8 w-full" />
+            <Skeleton class="h-8 w-full" />
+            <Skeleton class="h-8 w-full" />
+          </CardContent>
+        </Card>
+        <!-- Empty State -->
+        <Card v-else-if="filteredPrescriptions.length === 0" class="rounded-3xl border-0 shadow-xl bg-white/80 dark:bg-gray-900/80 mb-6">
+          <CardContent class="p-6 text-center flex flex-col items-center">
+            <svg width="80" height="80" fill="none" viewBox="0 0 80 80" class="mb-4">
+              <rect width="80" height="80" rx="16" fill="#e3f2fd"/>
+              <path d="M24 40h32M40 24v32" stroke="#1976d2" stroke-width="4" stroke-linecap="round"/>
+            </svg>
+            <p class="text-lg font-semibold">No prescriptions found.</p>
+            <p class="text-sm mt-2 text-muted-foreground">Your prescriptions will appear here.</p>
+          </CardContent>
+        </Card>
+        <!-- Prescriptions Table -->
+        <Card v-else class="rounded-3xl border-0 shadow-xl bg-white/80 dark:bg-gray-900/80 mb-6">
+          <CardHeader>
+            <CardTitle>Prescription History</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div class="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead class="cursor-pointer" @click="toggleSort('medication')">
+                      Medication
+                      <span v-if="sortColumn === 'medication'" class="ml-1">
+                        {{ sortDirection === 'asc' ? '↑' : '↓' }}
+                      </span>
+                    </TableHead>
+                    <TableHead class="cursor-pointer" @click="toggleSort('dosage')">
+                      Dosage
+                      <span v-if="sortColumn === 'dosage'" class="ml-1">
+                        {{ sortDirection === 'asc' ? '↑' : '↓' }}
+                      </span>
+                    </TableHead>
+                    <TableHead>Instructions</TableHead>
+                    <TableHead class="cursor-pointer" @click="toggleSort('doctor')">
+                      Doctor
+                      <span v-if="sortColumn === 'doctor'" class="ml-1">
+                        {{ sortDirection === 'asc' ? '↑' : '↓' }}
+                      </span>
+                    </TableHead>
+                    <TableHead class="cursor-pointer" @click="toggleSort('start_date')">
+                      Start Date
+                      <span v-if="sortColumn === 'start_date'" class="ml-1">
+                        {{ sortDirection === 'asc' ? '↑' : '↓' }}
+                      </span>
+                    </TableHead>
+                    <TableHead class="cursor-pointer" @click="toggleSort('end_date')">
+                      End Date
+                      <span v-if="sortColumn === 'end_date'" class="ml-1">
+                        {{ sortDirection === 'asc' ? '↑' : '↓' }}
+                      </span>
+                    </TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  <TableRow v-for="item in paginatedPrescriptions" :key="item.id" class="hover:bg-muted/50 transition-colors">
+                    <TableCell>{{ item.drug?.generic_name || item.drug?.generic_name || 'N/A' }}</TableCell>
+                    <TableCell>{{ item.dosage || 'N/A' }}</TableCell>
+                    <TableCell>
+                      <span v-if="item.instructions && item.instructions.length > 30">
+                        {{ truncateInstructions(item.instructions) }}
+                        <Button variant="link" size="sm" class="px-1 py-0 h-auto align-baseline" @click="openInstructionsDialog(item.instructions)">View More</Button>
+                      </span>
+                      <span v-else>{{ item.instructions }}</span>
+                    </TableCell>
+                    <TableCell>{{ item.doctor || 'N/A' }}</TableCell>
+                    <TableCell>{{ formatDate(item.start_date) }}</TableCell>
+                    <TableCell>{{ formatDate(item.end_date) }}</TableCell>
+                  </TableRow>
+                </TableBody>
+              </Table>
+            </div>
+            <div class="flex flex-col sm:flex-row justify-between items-center p-4 border-t gap-4">
+              <span class="text-sm text-muted-foreground">
+                Showing {{ (page - 1) * pageSize + 1 }} to {{ Math.min(page * pageSize, filteredPrescriptions.length) }} of {{ filteredPrescriptions.length }} prescriptions
+              </span>
+              <div class="flex gap-2 flex-wrap justify-center">
+                <Button 
+                  :disabled="page === 1" 
+                  variant="outline" 
+                  size="sm" 
+                  @click="page--"
+                >
+                  Prev
+                </Button>
+                <Button
+                  v-for="pageNumber in getPageNumbers()"
+                  :key="pageNumber"
+                  :variant="page === pageNumber ? 'default' : 'outline'"
+                  size="sm"
+                  @click="goToPage(pageNumber)"
+                >
+                  {{ pageNumber }}
+                </Button>
+                <Button 
+                  :disabled="page === totalPages || totalPages === 0" 
+                  variant="outline" 
+                  size="sm" 
+                  @click="page++"
+                >
+                  Next
+                </Button>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        <!-- Instructions Dialog -->
+        <Dialog v-model:open="showInstructionsDialog">
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Prescription Instructions</DialogTitle>
+            </DialogHeader>
+            <div class="whitespace-pre-line text-base">{{ instructionsDialogText }}</div>
+            <DialogFooter>
+              <Button variant="outline" @click="closeInstructionsDialog">Close</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      </div>
     </div>
   </AppLayout>
 </template>

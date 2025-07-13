@@ -21,7 +21,35 @@ Route::get('dashboard', \App\Http\Controllers\DashboardController::class)
 Route::get('admin/dashboard', \App\Http\Controllers\AdminDashboardController::class)
     ->middleware(['auth', 'verified'])->name('admin.dashboard');
 
+Route::get('staff/dashboard', \App\Http\Controllers\StaffDashboardController::class)
+    ->middleware(['auth', 'verified'])->name('staff.dashboard');
+
 Route::middleware(['auth'])->group(function () {
+    // Staff-specific routes
+    Route::get('/staff/appointments', function () {
+        return Inertia::render('StaffAppointments');
+    })->name('staff.appointments');
+    
+    Route::get('/staff/patients', function () {
+        return Inertia::render('StaffPatients');
+    })->name('staff.patients');
+    
+    Route::get('/staff/prescriptions', function () {
+        return Inertia::render('StaffPrescriptions');
+    })->name('staff.prescriptions');
+    
+    Route::get('/staff/lab-results', function () {
+        return Inertia::render('StaffLabResults');
+    })->name('staff.lab-results');
+    
+    Route::get('/staff/vitals', function () {
+        return Inertia::render('StaffVitals');
+    })->name('staff.vitals');
+    
+    Route::get('/staff/visits', function () {
+        return Inertia::render('StaffVisits');
+    })->name('staff.visits');
+    
     Route::get('/appointments', function () {
         return Inertia::render('appointments');
     });
@@ -73,6 +101,11 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/my-billings/{billing}', [\App\Http\Controllers\BillingController::class, 'show'])->name('my.billings.show');
     Route::get('/my-billings/{billing}/pdf', [\App\Http\Controllers\BillingController::class, 'pdf'])->name('my.billings.pdf');
     Route::get('/my-billings/{billing}/pdf/view', [\App\Http\Controllers\BillingController::class, 'pdfView'])->name('my.billings.pdf.view');
+    Route::get('/staff/patients/{id}', function ($id) {
+        return Inertia::render('PatientProfile', [
+            'patientId' => $id,
+        ]);
+    })->name('staff.patients.profile');
 });
 
 // Billing & Invoicing

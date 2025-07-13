@@ -331,205 +331,202 @@ function getRoleBadgeVariant(role) {
 <template>
     <Head title="Staff Management" />
     <AppLayout :breadcrumbs="breadcrumbs">
-        <div class="max-w-screen-xl mx-auto py-6 px-4 sm:px-6 lg:px-8 min-h-[70vh]">
-            <div class="space-y-2 mb-8">
-                <div class="flex items-center justify-between">
-                    <h1 class="text-3xl font-bold tracking-tight flex items-center gap-2">
-                        <span>Staff Management</span>
-                        <Badge variant="secondary">Admin</Badge>
-                    </h1>
-                    <Button @click="openAddModal" size="lg">Add New Staff</Button>
-                </div>
-                <p class="text-muted-foreground text-sm">Manage staff accounts including doctors, nurses, and administrators.</p>
-            </div>
-
-            <!-- Search and Filters -->
-            <div class="mb-6">
-                <Input
-                    v-model="searchQuery"
-                    placeholder="Search staff by name, email, or role..."
-                    class="max-w-md"
-                />
-            </div>
-
-            <!-- Error Display -->
-            <Card v-if="error" class="mb-6">
-                <CardContent class="p-4 text-center text-red-600">
-                    {{ error }}
-                </CardContent>
-            </Card>
-
-            <!-- Staff Table -->
-            <Card v-if="loading">
-                <CardContent class="p-6 space-y-4">
-                    <div class="animate-pulse">
-                        <div class="h-8 bg-gray-200 rounded w-1/4 mb-4"></div>
-                        <div class="space-y-3">
-                            <div class="h-4 bg-gray-200 rounded"></div>
-                            <div class="h-4 bg-gray-200 rounded"></div>
-                            <div class="h-4 bg-gray-200 rounded"></div>
+        <div class="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 dark:from-gray-900 dark:via-gray-800 dark:to-purple-900">
+            <div class="max-w-screen-xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
+                <!-- Header -->
+                <div class="relative overflow-hidden bg-gradient-to-r from-blue-600 via-purple-600 to-blue-800 rounded-3xl p-8 mb-8 shadow-2xl">
+                    <div class="absolute inset-0 bg-black opacity-10"></div>
+                    <div class="absolute -top-4 -right-4 w-24 h-24 bg-white opacity-10 rounded-full blur-xl"></div>
+                    <div class="absolute -bottom-4 -left-4 w-32 h-32 bg-white opacity-5 rounded-full blur-xl"></div>
+                    <div class="relative z-10">
+                        <div class="flex items-center gap-4 mb-4">
+                            <div class="w-16 h-16 bg-white bg-opacity-20 rounded-2xl flex items-center justify-center backdrop-blur-sm">
+                                <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                                </svg>
+                            </div>
+                            <div>
+                                <h1 class="text-4xl font-bold text-white">Staff Management</h1>
+                                <p class="text-blue-100 text-lg">Admin Panel</p>
+                            </div>
                         </div>
+                        <p class="text-blue-100 text-lg">
+                            Manage staff accounts including doctors, nurses, and administrators.
+                        </p>
                     </div>
-                </CardContent>
-            </Card>
-
-            <Card v-else-if="filteredStaff.length === 0">
-                <CardContent class="p-6 text-center flex flex-col items-center">
-                    <svg width="80" height="80" fill="none" viewBox="0 0 80 80" class="mb-4">
-                        <rect width="80" height="80" rx="16" fill="#e3f2fd"/>
-                        <path d="M24 40h32M40 24v32" stroke="#1976d2" stroke-width="4" stroke-linecap="round"/>
-                    </svg>
-                    <p class="text-lg font-semibold">No staff found.</p>
-                    <p class="text-sm mt-2 text-muted-foreground">
-                        {{ searchQuery ? 'Try adjusting your search terms.' : 'Add your first staff member to get started.' }}
-                    </p>
-                </CardContent>
-            </Card>
-
-            <Card v-else>
-                <CardHeader>
-                    <CardTitle>
-                        All Staff 
-                        <span class="text-sm font-normal text-muted-foreground">
-                            ({{ pagination.total }} total, showing {{ pagination.from }}-{{ pagination.to }})
-                        </span>
-                    </CardTitle>
-                </CardHeader>
-                <div class="overflow-x-auto">
-                    <Table>
-                        <TableHeader>
-                            <TableRow>
-                                <TableHead>Name</TableHead>
-                                <TableHead>Email</TableHead>
-                                <TableHead>Phone</TableHead>
-                                <TableHead>Role</TableHead>
-                                <TableHead>Status</TableHead>
-                                <TableHead>Joined</TableHead>
-                                <TableHead class="text-right">Actions</TableHead>
-                            </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                            <TableRow v-for="staffMember in filteredStaff" :key="staffMember.id" class="hover:bg-muted/50">
-                                <TableCell class="font-medium">{{ staffMember.name }}</TableCell>
-                                <TableCell>{{ staffMember.email }}</TableCell>
-                                <TableCell>{{ staffMember.phone }}</TableCell>
-                                <TableCell>
-                                    <Badge :variant="getRoleBadgeVariant(staffMember.role)" class="capitalize">
-                                        {{ staffMember.role }}
-                                    </Badge>
-                                </TableCell>
-                                <TableCell>
-                                    <Badge :variant="staffMember.email_verified_at ? 'default' : 'secondary'">
-                                        {{ staffMember.email_verified_at ? 'Verified' : 'Unverified' }}
-                                    </Badge>
-                                </TableCell>
-                                <TableCell>{{ formatDate(staffMember.created_at) }}</TableCell>
-                                <TableCell class="text-right">
-                                    <div class="flex items-center justify-end">
-                                        <DropdownMenu>
-                                            <DropdownMenuTrigger asChild>
-                                                <Button variant="ghost" size="sm" class="h-8 w-8 p-0">
-                                                    <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" />
-                                                    </svg>
-                                                    <span class="sr-only">Open menu</span>
-                                                </Button>
-                                            </DropdownMenuTrigger>
-                                            <DropdownMenuContent align="end" class="w-48">
-                                                <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                                                <DropdownMenuSeparator />
-                                                
-                                                <!-- View Details -->
-                                                <DropdownMenuItem @click="openDetailsModal(staffMember)">
-                                                    <svg class="mr-2 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                                                    </svg>
-                                                    View Details
-                                                </DropdownMenuItem>
-                                                
-                                                <!-- Edit Staff -->
-                                                <DropdownMenuItem @click="openEditModal(staffMember)">
-                                                    <svg class="mr-2 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                                                    </svg>
-                                                    Edit Staff
-                                                </DropdownMenuItem>
-                                                
-                                                <!-- Delete Staff -->
-                                                <DropdownMenuItem 
-                                                    @click="openDeleteModal(staffMember)"
-                                                    class="text-red-600 focus:text-red-600"
-                                                >
-                                                    <svg class="mr-2 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                                    </svg>
-                                                    Delete Staff
-                                                </DropdownMenuItem>
-                                            </DropdownMenuContent>
-                                        </DropdownMenu>
-                                    </div>
-                                </TableCell>
-                            </TableRow>
-                        </TableBody>
-                    </Table>
                 </div>
-                
-                <!-- Pagination Controls -->
-                <div class="flex items-center justify-between px-6 py-4 border-t">
-                    <div class="flex items-center gap-4">
-                        <div class="flex items-center gap-2">
-                            <span class="text-sm text-muted-foreground">Show:</span>
-                            <select 
-                                v-model="perPage" 
-                                @change="changePerPage(perPage)"
-                                class="border rounded px-2 py-1 text-sm"
-                            >
-                                <option value="5">5</option>
-                                <option value="10">10</option>
-                                <option value="20">20</option>
-                                <option value="50">50</option>
-                            </select>
-                            <span class="text-sm text-muted-foreground">per page</span>
+                <!-- Search and Filters -->
+                <Card class="rounded-3xl border-0 shadow-xl bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm mb-8">
+                    <CardContent class="p-6 flex flex-col md:flex-row md:items-center gap-4">
+                        <Input
+                            v-model="searchQuery"
+                            placeholder="Search staff by name, email, or role..."
+                            class="max-w-md"
+                        />
+                        <Button @click="openAddModal" size="lg" class="ml-auto">Add New Staff</Button>
+                    </CardContent>
+                </Card>
+                <!-- Error Display -->
+                <Card v-if="error" class="rounded-3xl border-0 shadow-xl bg-red-50 dark:bg-red-900/80 mb-6">
+                    <CardContent class="p-4 text-center text-red-600">
+                        {{ error }}
+                    </CardContent>
+                </Card>
+                <!-- Staff Table -->
+                <Card v-if="loading" class="rounded-3xl border-0 shadow-xl bg-white/80 dark:bg-gray-900/80 mb-6">
+                    <CardContent class="p-6 space-y-4">
+                        <div class="animate-pulse">
+                            <div class="h-8 bg-gray-200 rounded w-1/4 mb-4"></div>
+                            <div class="space-y-3">
+                                <div class="h-4 bg-gray-200 rounded"></div>
+                                <div class="h-4 bg-gray-200 rounded"></div>
+                                <div class="h-4 bg-gray-200 rounded"></div>
+                            </div>
                         </div>
-                    </div>
-                    
-                    <div class="flex items-center gap-2">
-                        <Button 
-                            variant="outline" 
-                            size="sm" 
-                            @click="goToPage(currentPage - 1)"
-                            :disabled="currentPage <= 1"
-                        >
-                            Previous
-                        </Button>
+                    </CardContent>
+                </Card>
+                <Card v-else class="rounded-3xl border-0 shadow-xl bg-white/80 dark:bg-gray-900/80 mb-6">
+                    <CardHeader>
+                        <CardTitle>All Staff</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <div class="overflow-x-auto">
+                            <Table>
+                                <TableHeader>
+                                    <TableRow>
+                                        <TableHead>Name</TableHead>
+                                        <TableHead>Email</TableHead>
+                                        <TableHead>Phone</TableHead>
+                                        <TableHead>Role</TableHead>
+                                        <TableHead>Status</TableHead>
+                                        <TableHead>Joined</TableHead>
+                                        <TableHead class="text-right">Actions</TableHead>
+                                    </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                    <TableRow v-for="staffMember in filteredStaff" :key="staffMember.id" class="hover:bg-muted/50">
+                                        <TableCell class="font-medium">{{ staffMember.name }}</TableCell>
+                                        <TableCell>{{ staffMember.email }}</TableCell>
+                                        <TableCell>{{ staffMember.phone }}</TableCell>
+                                        <TableCell>
+                                            <Badge :variant="getRoleBadgeVariant(staffMember.role)" class="capitalize">
+                                                {{ staffMember.role }}
+                                            </Badge>
+                                        </TableCell>
+                                        <TableCell>
+                                            <Badge :variant="staffMember.email_verified_at ? 'default' : 'secondary'">
+                                                {{ staffMember.email_verified_at ? 'Verified' : 'Unverified' }}
+                                            </Badge>
+                                        </TableCell>
+                                        <TableCell>{{ formatDate(staffMember.created_at) }}</TableCell>
+                                        <TableCell class="text-right">
+                                            <div class="flex items-center justify-end">
+                                                <DropdownMenu>
+                                                    <DropdownMenuTrigger asChild>
+                                                        <Button variant="ghost" size="sm" class="h-8 w-8 p-0">
+                                                            <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" />
+                                                            </svg>
+                                                            <span class="sr-only">Open menu</span>
+                                                        </Button>
+                                                    </DropdownMenuTrigger>
+                                                    <DropdownMenuContent align="end" class="w-48">
+                                                        <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                                                        <DropdownMenuSeparator />
+                                                        
+                                                        <!-- View Details -->
+                                                        <DropdownMenuItem @click="openDetailsModal(staffMember)">
+                                                            <svg class="mr-2 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                                            </svg>
+                                                            View Details
+                                                        </DropdownMenuItem>
+                                                        
+                                                        <!-- Edit Staff -->
+                                                        <DropdownMenuItem @click="openEditModal(staffMember)">
+                                                            <svg class="mr-2 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                                            </svg>
+                                                            Edit Staff
+                                                        </DropdownMenuItem>
+                                                        
+                                                        <!-- Delete Staff -->
+                                                        <DropdownMenuItem 
+                                                            @click="openDeleteModal(staffMember)"
+                                                            class="text-red-600 focus:text-red-600"
+                                                        >
+                                                            <svg class="mr-2 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                                            </svg>
+                                                            Delete Staff
+                                                        </DropdownMenuItem>
+                                                    </DropdownMenuContent>
+                                                </DropdownMenu>
+                                            </div>
+                                        </TableCell>
+                                    </TableRow>
+                                </TableBody>
+                            </Table>
+                        </div>
                         
-                        <div class="flex items-center gap-1">
-                            <template v-for="page in getVisiblePages()" :key="page">
+                        <!-- Pagination Controls -->
+                        <div class="flex items-center justify-between px-6 py-4 border-t">
+                            <div class="flex items-center gap-4">
+                                <div class="flex items-center gap-2">
+                                    <span class="text-sm text-muted-foreground">Show:</span>
+                                    <select 
+                                        v-model="perPage" 
+                                        @change="changePerPage(perPage)"
+                                        class="border rounded px-2 py-1 text-sm"
+                                    >
+                                        <option value="5">5</option>
+                                        <option value="10">10</option>
+                                        <option value="20">20</option>
+                                        <option value="50">50</option>
+                                    </select>
+                                    <span class="text-sm text-muted-foreground">per page</span>
+                                </div>
+                            </div>
+                            
+                            <div class="flex items-center gap-2">
                                 <Button 
-                                    v-if="page !== '...'" 
-                                    :variant="page === currentPage ? 'default' : 'outline'"
-                                    size="sm"
-                                    @click="goToPage(page)"
-                                    class="w-8 h-8 p-0"
+                                    variant="outline" 
+                                    size="sm" 
+                                    @click="goToPage(currentPage - 1)"
+                                    :disabled="currentPage <= 1"
                                 >
-                                    {{ page }}
+                                    Previous
                                 </Button>
-                                <span v-else class="px-2 text-muted-foreground">...</span>
-                            </template>
+                                
+                                <div class="flex items-center gap-1">
+                                    <template v-for="page in getVisiblePages()" :key="page">
+                                        <Button 
+                                            v-if="page !== '...'" 
+                                            :variant="page === currentPage ? 'default' : 'outline'"
+                                            size="sm"
+                                            @click="goToPage(page)"
+                                            class="w-8 h-8 p-0"
+                                        >
+                                            {{ page }}
+                                        </Button>
+                                        <span v-else class="px-2 text-muted-foreground">...</span>
+                                    </template>
+                                </div>
+                                
+                                <Button 
+                                    variant="outline" 
+                                    size="sm" 
+                                    @click="goToPage(currentPage + 1)"
+                                    :disabled="currentPage >= pagination.last_page"
+                                >
+                                    Next
+                                </Button>
+                            </div>
                         </div>
-                        
-                        <Button 
-                            variant="outline" 
-                            size="sm" 
-                            @click="goToPage(currentPage + 1)"
-                            :disabled="currentPage >= pagination.last_page"
-                        >
-                            Next
-                        </Button>
-                    </div>
-                </div>
-            </Card>
+                    </CardContent>
+                </Card>
+            </div>
         </div>
 
         <!-- Add Staff Modal -->

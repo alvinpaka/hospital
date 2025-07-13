@@ -15,6 +15,17 @@ class DashboardController extends Controller
     public function __invoke(Request $request)
     {
         $user = $request->user();
+
+        // Redirect staff to their dashboard
+        if (in_array($user->role, ['doctor', 'nurse'])) {
+            return redirect()->route('staff.dashboard');
+        }
+
+        // Only patients should see this dashboard
+        if ($user->role !== 'patient') {
+            abort(403, 'Unauthorized access');
+        }
+
         $patientId = $user->id;
 
         $nextAppointment = Appointment::where('patient_id', $patientId)
@@ -35,6 +46,7 @@ class DashboardController extends Controller
 
         $currentPrescription = Prescription::where('patient_id', $patientId)
             ->orderByDesc('start_date')
+            ->with('drug')
             ->first();
 
         $latestVitals = Vital::where('patient_id', $patientId)

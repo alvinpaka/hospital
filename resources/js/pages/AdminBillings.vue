@@ -9,6 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from '@/components/ui/select';
+import { Skeleton } from '@/components/ui/skeleton';
 
 const page = usePage();
 const billings = computed(() => page.props.billings.data || []);
@@ -112,27 +113,45 @@ function getPageNumbers() {
 </script>
 
 <template>
-  <Head title="Billing & Invoicing" />
-  <AppLayout>
-    <div class="max-w-7xl mx-auto p-4 flex flex-col gap-6">
-      <div class="flex items-center justify-between">
-        <div>
-          <h1 class="text-3xl font-bold tracking-tight flex items-center gap-2">
-            <span>Billing & Invoicing</span>
-            <Badge variant="secondary">Admin</Badge>
-          </h1>
-          <p class="text-muted-foreground">Manage payments and billing for patients.</p>
+  <Head title="Admin Billings" />
+  <AppLayout :breadcrumbs="breadcrumbs">
+    <div class="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 dark:from-gray-900 dark:via-gray-800 dark:to-purple-900">
+      <div class="max-w-screen-xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
+        <!-- Header -->
+        <div class="relative overflow-hidden bg-gradient-to-r from-blue-600 via-purple-600 to-blue-800 rounded-3xl p-8 mb-8 shadow-2xl">
+          <div class="absolute inset-0 bg-black opacity-10"></div>
+          <div class="absolute -top-4 -right-4 w-24 h-24 bg-white opacity-10 rounded-full blur-xl"></div>
+          <div class="absolute -bottom-4 -left-4 w-32 h-32 bg-white opacity-5 rounded-full blur-xl"></div>
+          <div class="relative z-10">
+            <div class="flex items-center gap-4 mb-4">
+              <div class="w-16 h-16 bg-white bg-opacity-20 rounded-2xl flex items-center justify-center backdrop-blur-sm">
+                <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4-1.79-4-4-4zm0 0V4m0 12v4m8-8h-4m-8 0H4" />
+                </svg>
+              </div>
+              <div>
+                <h1 class="text-4xl font-bold text-white">Admin Billings</h1>
+                <p class="text-blue-100 text-lg">Admin Panel</p>
+              </div>
+              <div class="ml-auto">
+                <Button asChild>
+                  <Link href="/admin/billings/create">
+                    <span class="flex items-center gap-2">
+                      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" /></svg>
+                      Add Bill
+                    </span>
+                  </Link>
+                </Button>
+              </div>
+            </div>
+            <p class="text-blue-100 text-lg">
+              Manage and review all billing records and invoices.
+            </p>
+          </div>
         </div>
-        <Button asChild>
-          <Link href="/admin/billings/create">New Bill</Link>
-        </Button>
-      </div>
-      <Card>
-        <CardHeader>
-          <CardTitle>All Bills</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div class="flex flex-wrap gap-4 mb-4 items-center">
+        <!-- Search/Filters (if any) and Table in Card -->
+        <Card class="rounded-3xl border-0 shadow-xl bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm mb-8">
+          <CardContent class="p-6 flex flex-col md:flex-row md:items-center gap-4">
             <Input v-model="search" placeholder="Search by patient name or description..." class="w-64" />
             <Select v-model="statusFilter">
               <SelectTrigger class="w-48">
@@ -145,162 +164,184 @@ function getPageNumbers() {
                 <SelectItem value="overdue">Overdue</SelectItem>
               </SelectContent>
             </Select>
-          </div>
-          <div class="overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>#</TableHead>
-                  <TableHead>Patient</TableHead>
-                  <TableHead>Description</TableHead>
-                  <TableHead>Amount</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Due Date</TableHead>
-                  <TableHead>Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                <TableRow v-for="billing in paginatedBillings" :key="billing.id" class="hover:bg-muted/50">
-                  <TableCell class="font-mono text-sm">#{{ billing.id }}</TableCell>
-                  <TableCell>
-                    <div class="flex flex-col">
-                      <span class="font-medium">
-                        {{ billing.patient?.name || 'Unknown Patient' }}
-                      </span>
-                      <span v-if="billing.patient" class="text-xs text-muted-foreground">{{ billing.patient.email || 'No email' }}</span>
-                    </div>
-                  </TableCell>
-                  <TableCell class="text-sm max-w-xs truncate">{{ billing.description || '-' }}</TableCell>
-                  <TableCell class="font-medium">UGX {{ billing.amount.toLocaleString() }}</TableCell>
-                  <TableCell>
-                    <Badge :variant="statusBadge(billing.status)">
-                      {{ billing.status.charAt(0).toUpperCase() + billing.status.slice(1) }}
-                    </Badge>
-                  </TableCell>
-                  <TableCell class="text-sm">{{ billing.due_date || '-' }}</TableCell>
-                  <TableCell>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="sm" class="h-8 w-8 p-0">
-                          <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" />
-                          </svg>
-                          <span class="sr-only">Open menu</span>
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end" class="w-48">
-                        <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                        <DropdownMenuSeparator />
-                        
-                        <!-- View Details -->
-                        <DropdownMenuItem asChild>
-                          <Link :href="`/admin/billings/${billing.id}`">
-                            <svg class="mr-2 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+          </CardContent>
+        </Card>
+        <!-- Error Display -->
+        <Card v-if="error" class="rounded-3xl border-0 shadow-xl bg-red-50 dark:bg-red-900/80 mb-6">
+          <CardContent class="p-4 text-center text-red-600">
+            {{ error }}
+          </CardContent>
+        </Card>
+        <!-- Loading State -->
+        <Card v-else-if="loading" class="rounded-3xl border-0 shadow-xl bg-white/80 dark:bg-gray-900/80 mb-6">
+          <CardContent class="p-6 space-y-4">
+            <Skeleton class="h-8 w-full" />
+            <Skeleton class="h-8 w-full" />
+            <Skeleton class="h-8 w-full" />
+          </CardContent>
+        </Card>
+        <!-- Billings Table -->
+        <Card v-else class="rounded-3xl border-0 shadow-xl bg-white/80 dark:bg-gray-900/80 mb-6">
+          <CardHeader>
+            <CardTitle>Billing Records</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div class="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>#</TableHead>
+                    <TableHead>Patient</TableHead>
+                    <TableHead>Description</TableHead>
+                    <TableHead>Amount</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Due Date</TableHead>
+                    <TableHead>Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  <TableRow v-for="billing in paginatedBillings" :key="billing.id" class="hover:bg-muted/50">
+                    <TableCell class="font-mono text-sm">#{{ billing.id }}</TableCell>
+                    <TableCell>
+                      <div class="flex flex-col">
+                        <span class="font-medium">
+                          {{ billing.patient?.name || 'Unknown Patient' }}
+                        </span>
+                        <span v-if="billing.patient" class="text-xs text-muted-foreground">{{ billing.patient.email || 'No email' }}</span>
+                      </div>
+                    </TableCell>
+                    <TableCell class="text-sm max-w-xs truncate">{{ billing.description || '-' }}</TableCell>
+                    <TableCell class="font-medium">UGX {{ billing.amount.toLocaleString() }}</TableCell>
+                    <TableCell>
+                      <Badge :variant="statusBadge(billing.status)">
+                        {{ billing.status.charAt(0).toUpperCase() + billing.status.slice(1) }}
+                      </Badge>
+                    </TableCell>
+                    <TableCell class="text-sm">{{ billing.due_date || '-' }}</TableCell>
+                    <TableCell>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="sm" class="h-8 w-8 p-0">
+                            <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" />
                             </svg>
-                            View Details
-                          </Link>
-                        </DropdownMenuItem>
-                        
-                        <!-- Edit Bill -->
-                        <DropdownMenuItem asChild>
-                          <Link :href="`/admin/billings/${billing.id}/edit`">
+                            <span class="sr-only">Open menu</span>
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" class="w-48">
+                          <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                          <DropdownMenuSeparator />
+                          
+                          <!-- View Details -->
+                          <DropdownMenuItem asChild>
+                            <Link :href="`/admin/billings/${billing.id}`">
+                              <svg class="mr-2 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                              </svg>
+                              View Details
+                            </Link>
+                          </DropdownMenuItem>
+                          
+                          <!-- Edit Bill -->
+                          <DropdownMenuItem asChild>
+                            <Link :href="`/admin/billings/${billing.id}/edit`">
+                              <svg class="mr-2 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                              </svg>
+                              Edit Bill
+                            </Link>
+                          </DropdownMenuItem>
+                          
+                          <!-- Mark as Paid -->
+                          <DropdownMenuItem 
+                            v-if="billing.status !== 'paid'"
+                            @click="markAsPaid(billing.id)"
+                            class="text-green-600 focus:text-green-600"
+                          >
                             <svg class="mr-2 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
                             </svg>
-                            Edit Bill
-                          </Link>
-                        </DropdownMenuItem>
-                        
-                        <!-- Mark as Paid -->
-                        <DropdownMenuItem 
-                          v-if="billing.status !== 'paid'"
-                          @click="markAsPaid(billing.id)"
-                          class="text-green-600 focus:text-green-600"
-                        >
-                          <svg class="mr-2 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
-                          </svg>
-                          Mark as Paid
-                        </DropdownMenuItem>
-                        
-                        <!-- Download PDF -->
-                        <DropdownMenuItem @click="downloadPdf(billing.id)">
-                          <svg class="mr-2 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                          </svg>
-                          Download PDF
-                        </DropdownMenuItem>
-                        
-                        <!-- Print -->
-                        <DropdownMenuItem @click="printBill(billing.id)">
-                          <svg class="mr-2 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 9V2h12v7M6 18v4h12v-4M6 14h12" />
-                          </svg>
-                          Print
-                        </DropdownMenuItem>
-                        
-                        <!-- Delete Bill -->
-                        <DropdownMenuItem 
-                          @click="deleteBilling(billing.id)"
-                          class="text-red-600 focus:text-red-600"
-                        >
-                          <svg class="mr-2 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                          </svg>
-                          Delete Bill
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </TableCell>
-                </TableRow>
-                <TableRow v-if="paginatedBillings.length === 0">
-                  <TableCell colspan="7" class="text-center text-muted-foreground py-8">
-                    <svg class="mx-auto h-12 w-12 text-muted-foreground/50 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                    </svg>
-                    <p class="text-sm">No bills found.</p>
-                  </TableCell>
-                </TableRow>
-              </TableBody>
-            </Table>
-          </div>
-          
-          <!-- Pagination -->
-          <div v-if="totalPages > 1" class="flex items-center justify-between p-4 border-t">
-            <div class="flex items-center gap-2 text-sm text-muted-foreground">
-              <span>Showing {{ (currentPage - 1) * pageSize + 1 }} to {{ Math.min(currentPage * pageSize, filteredBillings.length) }} of {{ filteredBillings.length }} results</span>
+                            Mark as Paid
+                          </DropdownMenuItem>
+                          
+                          <!-- Download PDF -->
+                          <DropdownMenuItem @click="downloadPdf(billing.id)">
+                            <svg class="mr-2 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                            </svg>
+                            Download PDF
+                          </DropdownMenuItem>
+                          
+                          <!-- Print -->
+                          <DropdownMenuItem @click="printBill(billing.id)">
+                            <svg class="mr-2 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 9V2h12v7M6 18v4h12v-4M6 14h12" />
+                            </svg>
+                            Print
+                          </DropdownMenuItem>
+                          
+                          <!-- Delete Bill -->
+                          <DropdownMenuItem 
+                            @click="deleteBilling(billing.id)"
+                            class="text-red-600 focus:text-red-600"
+                          >
+                            <svg class="mr-2 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                            </svg>
+                            Delete Bill
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </TableCell>
+                  </TableRow>
+                  <TableRow v-if="paginatedBillings.length === 0">
+                    <TableCell colspan="7" class="text-center text-muted-foreground py-8">
+                      <svg class="mx-auto h-12 w-12 text-muted-foreground/50 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                      </svg>
+                      <p class="text-sm">No bills found.</p>
+                    </TableCell>
+                  </TableRow>
+                </TableBody>
+              </Table>
             </div>
             
-            <div class="flex items-center gap-2">
-              <Button 
-                variant="outline" 
-                size="sm" 
-                @click="goToPage(currentPage - 1)" 
-                :disabled="currentPage === 1"
-              >
-                Previous
-              </Button>
-              
-              <div class="flex items-center gap-1">
-                <Button v-for="pageNum in getPageNumbers()" :key="pageNum" variant="outline" size="sm" :class="pageNum === currentPage ? 'bg-primary text-primary-foreground' : ''" @click="goToPage(pageNum)">
-                  {{ pageNum }}
-                </Button>
+            <!-- Pagination -->
+            <div v-if="totalPages > 1" class="flex items-center justify-between p-4 border-t">
+              <div class="flex items-center gap-2 text-sm text-muted-foreground">
+                <span>Showing {{ (currentPage - 1) * pageSize + 1 }} to {{ Math.min(currentPage * pageSize, filteredBillings.length) }} of {{ filteredBillings.length }} results</span>
               </div>
               
-              <Button 
-                variant="outline" 
-                size="sm" 
-                @click="goToPage(currentPage + 1)" 
-                :disabled="currentPage === totalPages"
-              >
-                Next
-              </Button>
+              <div class="flex items-center gap-2">
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  @click="goToPage(currentPage - 1)" 
+                  :disabled="currentPage === 1"
+                >
+                  Previous
+                </Button>
+                
+                <div class="flex items-center gap-1">
+                  <Button v-for="pageNum in getPageNumbers()" :key="pageNum" variant="outline" size="sm" :class="pageNum === currentPage ? 'bg-primary text-primary-foreground' : ''" @click="goToPage(pageNum)">
+                    {{ pageNum }}
+                  </Button>
+                </div>
+                
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  @click="goToPage(currentPage + 1)" 
+                  :disabled="currentPage === totalPages"
+                >
+                  Next
+                </Button>
+              </div>
             </div>
-          </div>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   </AppLayout>
 </template> 
