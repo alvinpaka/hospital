@@ -9,6 +9,7 @@ import { Label } from '@/components/ui/label';
 import { Head, useForm } from '@inertiajs/vue3';
 import { LoaderCircle } from 'lucide-vue-next';
 import { ref } from 'vue';
+import AppearanceTabs from '@/components/AppearanceTabs.vue';
 
 defineProps<{
     status?: string;
@@ -42,70 +43,75 @@ const submit = async () => {
 </script>
 
 <template>
-  <div class="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-100 via-white to-blue-200 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900">
-    <div class="w-full max-w-md mx-auto">
-      <!-- Gradient Header -->
-      <div class="rounded-t-2xl px-8 py-6 text-center bg-gradient-to-r from-blue-500 via-sky-400 to-cyan-400 dark:from-blue-900 dark:via-blue-800 dark:to-cyan-900 shadow-lg">
-        <h1 class="text-2xl font-bold text-white tracking-tight">Log in to your account</h1>
-        <p class="text-sm text-blue-100 mt-1">Enter your email and password below to log in</p>
-      </div>
-      <!-- Card -->
-      <div class="bg-white dark:bg-slate-900 shadow-xl rounded-b-2xl px-8 py-8">
-        <Head title="Log in" />
-        <div v-if="status" class="mb-4 text-center text-sm font-medium text-green-600 dark:text-green-400">
-          {{ status }}
+  <div>
+    <div class="fixed bottom-4 left-4 z-50">
+      <AppearanceTabs />
+    </div>
+    <div class="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-100 via-white to-blue-200 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900">
+      <div class="w-full max-w-md mx-auto">
+        <!-- Gradient Header -->
+        <div class="rounded-t-2xl px-8 py-6 text-center bg-gradient-to-r from-blue-500 via-sky-400 to-cyan-400 dark:from-blue-900 dark:via-blue-800 dark:to-cyan-900 shadow-lg">
+          <h1 class="text-2xl font-bold text-white tracking-tight">Log in to your account</h1>
+          <p class="text-sm text-blue-100 mt-1">Enter your email and password below to log in</p>
         </div>
-        <div v-if="loginError" class="mb-2 text-center text-sm text-red-600 dark:text-red-400">{{ loginError }}</div>
-        <form @submit.prevent="submit" class="flex flex-col gap-6">
-          <div class="grid gap-6">
-            <div class="grid gap-2">
-              <Label for="email">Email address</Label>
-              <Input
-                id="email"
-                type="email"
-                required
-                autofocus
-                :tabindex="1"
-                autocomplete="email"
-                v-model="form.email"
-                placeholder="email@example.com"
-              />
-              <InputError :message="form.errors.email" />
-            </div>
-            <div class="grid gap-2">
-              <div class="flex items-center justify-between">
-                <Label for="password">Password</Label>
-                <TextLink v-if="canResetPassword" :href="route('password.request')" class="text-sm" :tabindex="5">
-                  Forgot password?
-                </TextLink>
+        <!-- Card -->
+        <div class="bg-white dark:bg-slate-900 shadow-xl rounded-b-2xl px-8 py-8">
+          <Head title="Log in" />
+          <div v-if="status" class="mb-4 text-center text-sm font-medium text-green-600 dark:text-green-400">
+            {{ status }}
+          </div>
+          <div v-if="loginError" class="mb-2 text-center text-sm text-red-600 dark:text-red-400">{{ loginError }}</div>
+          <form @submit.prevent="submit" class="flex flex-col gap-6">
+            <div class="grid gap-6">
+              <div class="grid gap-2">
+                <Label for="email">Email address</Label>
+                <Input
+                  id="email"
+                  type="email"
+                  required
+                  autofocus
+                  :tabindex="1"
+                  autocomplete="email"
+                  v-model="form.email"
+                  placeholder="email@example.com"
+                />
+                <InputError :message="form.errors.email" />
               </div>
-              <Input
-                id="password"
-                type="password"
-                required
-                :tabindex="2"
-                autocomplete="current-password"
-                v-model="form.password"
-                placeholder="Password"
-              />
-              <InputError :message="form.errors.password" />
+              <div class="grid gap-2">
+                <div class="flex items-center justify-between">
+                  <Label for="password">Password</Label>
+                  <TextLink v-if="canResetPassword" :href="route('password.request')" class="text-sm" :tabindex="5">
+                    Forgot password?
+                  </TextLink>
+                </div>
+                <Input
+                  id="password"
+                  type="password"
+                  required
+                  :tabindex="2"
+                  autocomplete="current-password"
+                  v-model="form.password"
+                  placeholder="Password"
+                />
+                <InputError :message="form.errors.password" />
+              </div>
+              <div class="flex items-center justify-between">
+                <Label for="remember" class="flex items-center space-x-3">
+                  <Checkbox id="remember" v-model="form.remember" :tabindex="3" />
+                  <span>Remember me</span>
+                </Label>
+              </div>
+              <Button type="submit" class="mt-4 w-full" :tabindex="4" :disabled="form.processing">
+                <LoaderCircle v-if="form.processing" class="h-4 w-4 animate-spin" />
+                Log in
+              </Button>
             </div>
-            <div class="flex items-center justify-between">
-              <Label for="remember" class="flex items-center space-x-3">
-                <Checkbox id="remember" v-model="form.remember" :tabindex="3" />
-                <span>Remember me</span>
-              </Label>
+            <div class="text-center text-sm text-muted-foreground">
+              Don't have an account?
+              <TextLink :href="route('register')" :tabindex="5">Sign up</TextLink>
             </div>
-            <Button type="submit" class="mt-4 w-full" :tabindex="4" :disabled="form.processing">
-              <LoaderCircle v-if="form.processing" class="h-4 w-4 animate-spin" />
-              Log in
-            </Button>
-          </div>
-          <div class="text-center text-sm text-muted-foreground">
-            Don't have an account?
-            <TextLink :href="route('register')" :tabindex="5">Sign up</TextLink>
-          </div>
-        </form>
+          </form>
+        </div>
       </div>
     </div>
   </div>
