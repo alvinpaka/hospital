@@ -25,13 +25,11 @@ const patientNavItems: NavItem[] = [
         title: 'My Appointments',
         href: '/appointments',
         icon: Calendar,
-        blink: appointmentBlink,
     },
     {
         title: 'My Prescriptions',
         href: '/prescriptions',
         icon: FileText,
-        blink: prescriptionBlink,
     },
     {
         title: 'My Lab Results',
@@ -75,7 +73,6 @@ const adminNavItems: NavItem[] = [
         title: 'Admin Appointments',
         href: '/appointments',
         icon: Calendar,
-        blink: appointmentBlink,
     },
     {
         title: 'Admin Prescriptions',
@@ -114,7 +111,6 @@ const staffNavItems: NavItem[] = [
         title: 'My Appointments',
         href: '/staff/appointments',
         icon: Calendar,
-        blink: appointmentBlink,
     },
     {
         title: 'My Patients',
@@ -125,7 +121,6 @@ const staffNavItems: NavItem[] = [
         title: 'My Prescriptions',
         href: '/staff/prescriptions',
         icon: FileText,
-        blink: prescriptionBlink,
     },
     {
         title: 'My Lab Results',

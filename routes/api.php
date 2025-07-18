@@ -6,6 +6,7 @@ use App\Http\Controllers\AppointmentController;
 use App\Http\Controllers\PatientController;
 use App\Http\Controllers\StaffController;
 use Illuminate\Support\Facades\Auth;
+use App\Http\Controllers\Api\MessageController;
 
 /*
 |--------------------------------------------------------------------------
@@ -301,6 +302,12 @@ Route::middleware(['web', 'auth'])->group(function () {
             ->get();
         return response()->json(['labResults' => $labResults]);
     });
+});
+
+Route::middleware(['web', 'auth:sanctum'])->group(function () {
+    Route::post('/messages/send', [MessageController::class, 'send']);
+    Route::get('/messages/poll', [MessageController::class, 'poll']);
+    Route::post('/messages/mark-read', [MessageController::class, 'markAsRead']);
 });
 
 Route::middleware(['web', 'auth'])->get('/notifications', function (Request $request) {

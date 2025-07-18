@@ -39,6 +39,9 @@ class HandleInertiaRequests extends Middleware
     {
         [$message, $author] = str(Inspiring::quotes()->random())->explode('-');
 
+        // Dynamically get the first admin user ID
+        $adminId = \App\Models\User::where('role', 'admin')->orderBy('id')->value('id');
+
         return [
             ...parent::share($request),
             'name' => config('app.name'),
@@ -46,6 +49,7 @@ class HandleInertiaRequests extends Middleware
             'auth' => [
                 'user' => $request->user(),
             ],
+            'adminId' => $adminId,
             'ziggy' => [
                 ...(new Ziggy)->toArray(),
                 'location' => $request->url(),

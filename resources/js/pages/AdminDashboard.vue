@@ -20,13 +20,161 @@ const breadcrumbs: BreadcrumbItem[] = [
 ];
 
 const page = usePage();
-const user = computed(() => page.props.user);
-const stats = computed(() => page.props.stats);
-const recentActivities = computed(() => page.props.recentActivities);
-const todayAppointments = computed(() => page.props.todayAppointments);
-const recentLabResults = computed(() => page.props.recentLabResults);
-const recentPrescriptions = computed(() => page.props.recentPrescriptions);
-const analytics = computed(() => page.props.analytics);
+
+// Add interfaces for all relevant data structures
+interface User {
+  id: number;
+  name: string;
+}
+
+interface Patient {
+  id: number;
+  name: string;
+}
+
+interface Doctor {
+  id: number;
+  name: string;
+}
+
+interface Appointment {
+  id: number;
+  patient: Patient | string;
+  doctor?: Doctor | string | null;
+  status: string;
+  time: string;
+}
+
+interface LabResult {
+  id: number;
+  patient: Patient | string;
+  type: string;
+  result: string;
+  date: string;
+}
+
+interface Prescription {
+  id: number;
+  patient: Patient | string;
+  medication: string;
+  dosage: string;
+  start_date: string;
+}
+
+interface Activity {
+  id: number;
+  action: string;
+  user?: User | null;
+  created_at: string;
+}
+
+interface Stats {
+  totalVisits: number;
+  totalLabResults: number;
+  totalPrescriptions: number;
+  totalVitals: number;
+}
+
+interface AppointmentAnalytics {
+  total: number;
+  thisMonth: number;
+  avgPerDay: number;
+  confirmed: number;
+  pending: number;
+  canceled: number;
+}
+
+interface StaffPerformance {
+  doctors: number;
+  activeDoctors: number;
+  nurses: number;
+  admins: number;
+}
+
+interface MedicalRecordsAnalytics {
+  visits: { total: number; thisMonth: number };
+  labResults: { total: number; thisMonth: number };
+  prescriptions: { total: number; thisMonth: number };
+  vitals: { total: number; thisMonth: number };
+}
+
+interface TopMetrics {
+  busiestDay?: { date: string; count: number };
+  mostActiveDoctor?: { doctor: Doctor | string; count: number };
+}
+
+interface Trend {
+  month: string;
+  appointments: number;
+  visits: number;
+  newPatients: number;
+}
+
+interface Analytics {
+  appointmentAnalytics?: AppointmentAnalytics;
+  staffPerformance?: StaffPerformance;
+  medicalRecordsAnalytics?: MedicalRecordsAnalytics;
+  topMetrics?: TopMetrics;
+  trends?: Trend[];
+  billingTrends?: any;
+  patientDemographics?: any;
+}
+
+// Use these interfaces in computed properties
+const user = computed<User | null>(() => {
+  const u = page.props.user;
+  if (u && typeof u === 'object' && 'id' in u && 'name' in u) {
+    return u as User;
+  }
+  return null;
+});
+
+const stats = computed<Stats | null>(() => {
+  const s = page.props.stats;
+  if (s && typeof s === 'object' && 'totalVisits' in s && 'totalLabResults' in s && 'totalPrescriptions' in s && 'totalVitals' in s) {
+    return s as Stats;
+  }
+  return null;
+});
+
+const recentActivities = computed<Activity[]>(() => {
+  const arr = page.props.recentActivities;
+  if (Array.isArray(arr)) {
+    return arr.filter(a => a && typeof a === 'object' && 'id' in a && 'action' in a && 'created_at' in a);
+  }
+  return [];
+});
+
+const todayAppointments = computed<Appointment[]>(() => {
+  const arr = page.props.todayAppointments;
+  if (Array.isArray(arr)) {
+    return arr.filter(a => a && typeof a === 'object' && 'id' in a && 'status' in a && 'time' in a);
+  }
+  return [];
+});
+
+const recentLabResults = computed<LabResult[]>(() => {
+  const arr = page.props.recentLabResults;
+  if (Array.isArray(arr)) {
+    return arr.filter(r => r && typeof r === 'object' && 'id' in r && 'type' in r && 'result' in r && 'date' in r);
+  }
+  return [];
+});
+
+const recentPrescriptions = computed<Prescription[]>(() => {
+  const arr = page.props.recentPrescriptions;
+  if (Array.isArray(arr)) {
+    return arr.filter(p => p && typeof p === 'object' && 'id' in p && 'medication' in p && 'dosage' in p && 'start_date' in p);
+  }
+  return [];
+});
+const analytics = computed<Analytics | null>(() => {
+  const a = page.props.analytics;
+  if (a && typeof a === 'object') {
+    return a as Analytics;
+  }
+  return null;
+});
 
 
 
@@ -96,19 +244,19 @@ function formatTime(timeStr: string) {
                         <CardContent class="space-y-2">
                             <div class="flex justify-between">
                                 <span class="text-sm">Total Visits</span>
-                                <span class="font-medium">{{ stats?.totalVisits || 0 }}</span>
+                                <span class="font-medium">{{ stats?.totalVisits ?? 0 }}</span>
                             </div>
                             <div class="flex justify-between">
                                 <span class="text-sm">Lab Results</span>
-                                <span class="font-medium">{{ stats?.totalLabResults || 0 }}</span>
+                                <span class="font-medium">{{ stats?.totalLabResults ?? 0 }}</span>
                             </div>
                             <div class="flex justify-between">
                                 <span class="text-sm">Prescriptions</span>
-                                <span class="font-medium">{{ stats?.totalPrescriptions || 0 }}</span>
+                                <span class="font-medium">{{ stats?.totalPrescriptions ?? 0 }}</span>
                             </div>
                             <div class="flex justify-between">
                                 <span class="text-sm">Vitals Records</span>
-                                <span class="font-medium">{{ stats?.totalVitals || 0 }}</span>
+                                <span class="font-medium">{{ stats?.totalVitals ?? 0 }}</span>
                             </div>
                         </CardContent>
                     </Card>
@@ -128,8 +276,8 @@ function formatTime(timeStr: string) {
                             <div v-if="todayAppointments?.length > 0" class="space-y-3">
                                 <div v-for="appointment in todayAppointments" :key="appointment.id" class="flex items-center justify-between">
                                     <div>
-                                        <div class="text-sm font-medium">{{ appointment.patient?.name || 'Unknown Patient' }}</div>
-                                        <div class="text-xs text-muted-foreground">{{ formatTime(appointment.time) }} - {{ appointment.doctor?.name || 'No doctor assigned' }}</div>
+                                        <div class="text-sm font-medium">{{ typeof appointment.patient === 'object' && appointment.patient !== null ? appointment.patient.name : appointment.patient || 'Unknown Patient' }}</div>
+                                        <div class="text-xs text-muted-foreground">{{ formatTime(appointment.time) }} - {{ typeof appointment.doctor === 'object' && appointment.doctor !== null ? appointment.doctor.name : appointment.doctor || 'No doctor assigned' }}</div>
                                     </div>
                                     <Badge :variant="appointment.status === 'confirmed' ? 'default' : 'secondary'">
                                         {{ appointment.status }}
@@ -158,7 +306,7 @@ function formatTime(timeStr: string) {
                                     <div class="flex-1">
                                         <div class="text-sm">{{ activity.action }}</div>
                                         <div class="text-xs text-muted-foreground">
-                                            {{ activity.user?.name || 'System' }} • {{ formatDate(activity.created_at) }}
+                                            {{ typeof activity.user === 'object' && activity.user !== null ? activity.user.name : activity.user || 'System' }} • {{ formatDate(activity.created_at) }}
                                         </div>
                                     </div>
                                 </div>
@@ -186,7 +334,7 @@ function formatTime(timeStr: string) {
                             <div v-if="recentLabResults?.length > 0" class="space-y-3">
                                 <div v-for="result in recentLabResults" :key="result.id" class="flex items-center justify-between">
                                     <div>
-                                        <div class="text-sm font-medium">{{ result.patient?.name || 'Unknown Patient' }}</div>
+                                        <div class="text-sm font-medium">{{ typeof result.patient === 'object' && result.patient !== null ? result.patient.name : result.patient || 'Unknown Patient' }}</div>
                                         <div class="text-xs text-muted-foreground">{{ result.type }}: {{ result.result }}</div>
                                     </div>
                                     <div class="text-xs text-muted-foreground">{{ formatDate(result.date) }}</div>
@@ -211,7 +359,7 @@ function formatTime(timeStr: string) {
                             <div v-if="recentPrescriptions?.length > 0" class="space-y-3">
                                 <div v-for="prescription in recentPrescriptions" :key="prescription.id" class="flex items-center justify-between">
                                     <div>
-                                        <div class="text-sm font-medium">{{ prescription.patient?.name || 'Unknown Patient' }}</div>
+                                        <div class="text-sm font-medium">{{ typeof prescription.patient === 'object' && prescription.patient !== null ? prescription.patient.name : prescription.patient || 'Unknown Patient' }}</div>
                                         <div class="text-xs text-muted-foreground">{{ prescription.medication }} ({{ prescription.dosage }})</div>
                                     </div>
                                     <div class="text-xs text-muted-foreground">{{ formatDate(prescription.start_date) }}</div>
@@ -242,27 +390,27 @@ function formatTime(timeStr: string) {
                                 <div class="space-y-4">
                                     <div class="flex justify-between items-center">
                                         <span class="text-sm">Total Appointments</span>
-                                        <span class="font-bold">{{ analytics?.appointmentAnalytics?.total || 0 }}</span>
+                                        <span class="font-bold">{{ analytics?.appointmentAnalytics?.total ?? 0 }}</span>
                                     </div>
                                     <div class="flex justify-between items-center">
                                         <span class="text-sm">This Month</span>
-                                        <span class="font-bold text-blue-600">{{ analytics?.appointmentAnalytics?.thisMonth || 0 }}</span>
+                                        <span class="font-bold text-blue-600">{{ analytics?.appointmentAnalytics?.thisMonth ?? 0 }}</span>
                                     </div>
                                     <div class="flex justify-between items-center">
                                         <span class="text-sm">Avg. Per Day</span>
-                                        <span class="font-bold text-green-600">{{ Math.round(analytics?.appointmentAnalytics?.avgPerDay || 0) }}</span>
+                                        <span class="font-bold text-green-600">{{ Math.round(analytics?.appointmentAnalytics?.avgPerDay ?? 0) }}</span>
                                     </div>
                                     <div class="flex justify-between items-center">
                                         <span class="text-sm">Confirmed</span>
-                                        <span class="font-bold text-green-600">{{ analytics?.appointmentAnalytics?.confirmed || 0 }}</span>
+                                        <span class="font-bold text-green-600">{{ analytics?.appointmentAnalytics?.confirmed ?? 0 }}</span>
                                     </div>
                                     <div class="flex justify-between items-center">
                                         <span class="text-sm">Pending</span>
-                                        <span class="font-bold text-orange-600">{{ analytics?.appointmentAnalytics?.pending || 0 }}</span>
+                                        <span class="font-bold text-orange-600">{{ analytics?.appointmentAnalytics?.pending ?? 0 }}</span>
                                     </div>
                                     <div class="flex justify-between items-center">
                                         <span class="text-sm">Canceled</span>
-                                        <span class="font-bold text-red-600">{{ analytics?.appointmentAnalytics?.canceled || 0 }}</span>
+                                        <span class="font-bold text-red-600">{{ analytics?.appointmentAnalytics?.canceled ?? 0 }}</span>
                                     </div>
                                 </div>
                             </CardContent>
@@ -275,19 +423,19 @@ function formatTime(timeStr: string) {
                                 <div class="space-y-4">
                                     <div class="flex justify-between items-center">
                                         <span class="text-sm">Total Doctors</span>
-                                        <span class="font-bold text-blue-600">{{ analytics?.staffPerformance?.doctors || 0 }}</span>
+                                        <span class="font-bold text-blue-600">{{ analytics?.staffPerformance?.doctors ?? 0 }}</span>
                                     </div>
                                     <div class="flex justify-between items-center">
                                         <span class="text-sm">Active Doctors</span>
-                                        <span class="font-bold text-green-600">{{ analytics?.staffPerformance?.activeDoctors || 0 }}</span>
+                                        <span class="font-bold text-green-600">{{ analytics?.staffPerformance?.activeDoctors ?? 0 }}</span>
                                     </div>
                                     <div class="flex justify-between items-center">
                                         <span class="text-sm">Total Nurses</span>
-                                        <span class="font-bold text-purple-600">{{ analytics?.staffPerformance?.nurses || 0 }}</span>
+                                        <span class="font-bold text-purple-600">{{ analytics?.staffPerformance?.nurses ?? 0 }}</span>
                                     </div>
                                     <div class="flex justify-between items-center">
                                         <span class="text-sm">Administrators</span>
-                                        <span class="font-bold text-orange-600">{{ analytics?.staffPerformance?.admins || 0 }}</span>
+                                        <span class="font-bold text-orange-600">{{ analytics?.staffPerformance?.admins ?? 0 }}</span>
                                     </div>
                                 </div>
                                 <div class="mt-4">
@@ -303,24 +451,24 @@ function formatTime(timeStr: string) {
                         <CardContent>
                             <div class="grid gap-4 md:grid-cols-4">
                                 <div class="text-center">
-                                    <div class="text-2xl font-bold text-blue-600">{{ analytics?.medicalRecordsAnalytics?.visits?.total || 0 }}</div>
+                                    <div class="text-2xl font-bold text-blue-600">{{ analytics?.medicalRecordsAnalytics?.visits?.total ?? 0 }}</div>
                                     <div class="text-sm text-muted-foreground">Total Visits</div>
-                                    <div class="text-xs text-green-600">+{{ analytics?.medicalRecordsAnalytics?.visits?.thisMonth || 0 }} this month</div>
+                                    <div class="text-xs text-green-600">+{{ analytics?.medicalRecordsAnalytics?.visits?.thisMonth ?? 0 }} this month</div>
                                 </div>
                                 <div class="text-center">
-                                    <div class="text-2xl font-bold text-green-600">{{ analytics?.medicalRecordsAnalytics?.labResults?.total || 0 }}</div>
+                                    <div class="text-2xl font-bold text-green-600">{{ analytics?.medicalRecordsAnalytics?.labResults?.total ?? 0 }}</div>
                                     <div class="text-sm text-muted-foreground">Lab Results</div>
-                                    <div class="text-xs text-green-600">+{{ analytics?.medicalRecordsAnalytics?.labResults?.thisMonth || 0 }} this month</div>
+                                    <div class="text-xs text-green-600">+{{ analytics?.medicalRecordsAnalytics?.labResults?.thisMonth ?? 0 }} this month</div>
                                 </div>
                                 <div class="text-center">
-                                    <div class="text-2xl font-bold text-purple-600">{{ analytics?.medicalRecordsAnalytics?.prescriptions?.total || 0 }}</div>
+                                    <div class="text-2xl font-bold text-purple-600">{{ analytics?.medicalRecordsAnalytics?.prescriptions?.total ?? 0 }}</div>
                                     <div class="text-sm text-muted-foreground">Prescriptions</div>
-                                    <div class="text-xs text-green-600">+{{ analytics?.medicalRecordsAnalytics?.prescriptions?.thisMonth || 0 }} this month</div>
+                                    <div class="text-xs text-green-600">+{{ analytics?.medicalRecordsAnalytics?.prescriptions?.thisMonth ?? 0 }} this month</div>
                                 </div>
                                 <div class="text-center">
-                                    <div class="text-2xl font-bold text-orange-600">{{ analytics?.medicalRecordsAnalytics?.vitals?.total || 0 }}</div>
+                                    <div class="text-2xl font-bold text-orange-600">{{ analytics?.medicalRecordsAnalytics?.vitals?.total ?? 0 }}</div>
                                     <div class="text-sm text-muted-foreground">Vitals Records</div>
-                                    <div class="text-xs text-green-600">+{{ analytics?.medicalRecordsAnalytics?.vitals?.thisMonth || 0 }} this month</div>
+                                    <div class="text-xs text-green-600">+{{ analytics?.medicalRecordsAnalytics?.vitals?.thisMonth ?? 0 }} this month</div>
                                 </div>
                             </div>
                         </CardContent>
@@ -364,7 +512,7 @@ function formatTime(timeStr: string) {
                                     </div>
                                     <div v-if="analytics?.topMetrics?.mostActiveDoctor" class="flex justify-between items-center">
                                         <span class="text-sm">Most Active Doctor</span>
-                                        <span class="font-bold text-purple-600">{{ analytics.topMetrics.mostActiveDoctor.doctor?.name || 'Unknown' }}</span>
+                                        <span class="font-bold text-purple-600">{{ typeof analytics.topMetrics.mostActiveDoctor.doctor === 'object' && analytics.topMetrics.mostActiveDoctor.doctor !== null ? analytics.topMetrics.mostActiveDoctor.doctor.name : analytics.topMetrics.mostActiveDoctor.doctor || 'Unknown' }}</span>
                                     </div>
                                     <div v-if="analytics?.topMetrics?.mostActiveDoctor" class="flex justify-between items-center">
                                         <span class="text-sm">Appointments by Top Doctor</span>

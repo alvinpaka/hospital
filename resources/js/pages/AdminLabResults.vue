@@ -20,8 +20,18 @@ interface LabResult {
   type: string;
   result: string;
   doctor: string;
-  patient: string;
+  patient: string | { name: string };
   notes: string;
+}
+
+interface ActivityLogEntry {
+  id: number;
+  user?: { name?: string } | null;
+  action: string;
+  subject_type: string;
+  subject_id: number | string;
+  details: any;
+  created_at: string;
 }
 
 const allLabResults = ref<LabResult[]>([]);
@@ -46,7 +56,6 @@ onMounted(() => {
     allLabResults.value = Array.isArray(labResults) ? labResults : [];
   } catch {
     error.value = 'Failed to load lab results. Please try again later.';
-    console.error('Error loading lab results:');
   } finally {
     loading.value = false;
   }
@@ -57,19 +66,30 @@ const filteredLabResults = computed(() => {
   return allLabResults.value.filter(result =>
     result.type.toLowerCase().includes(query) ||
     result.doctor.toLowerCase().includes(query) ||
-    result.patient?.toLowerCase().includes(query) ||
+    (
+      typeof result.patient === 'string'
+        ? result.patient.toLowerCase()
+        : typeof result.patient === 'object' && result.patient !== null
+          ? result.patient.name.toLowerCase()
+          : ''
+    ).includes(query) ||
     result.result.toLowerCase().includes(query)
   );
 });
 
 const sortedLabResults = computed(() => {
   return [...filteredLabResults.value].sort((a, b) => {
-    const aValue = a[sortColumn.value];
-    const bValue = b[sortColumn.value];
+    let aValue = a[sortColumn.value];
+    let bValue = b[sortColumn.value];
+    // Handle patient field (string | { name: string })
+    if (sortColumn.value === 'patient') {
+      aValue = typeof aValue === 'object' && aValue !== null ? aValue.name : aValue || '';
+      bValue = typeof bValue === 'object' && bValue !== null ? bValue.name : bValue || '';
+    }
     if (sortColumn.value === 'date') {
       return sortDirection.value === 'asc'
-        ? new Date(aValue).getTime() - new Date(bValue).getTime()
-        : new Date(bValue).getTime() - new Date(aValue).getTime();
+        ? new Date(aValue as string).getTime() - new Date(bValue as string).getTime()
+        : new Date(bValue as string).getTime() - new Date(aValue as string).getTime();
     }
     return sortDirection.value === 'asc'
       ? String(aValue).localeCompare(String(bValue))
@@ -156,7 +176,7 @@ function closeNotesDialog() {
   showNotesDialog.value = false;
   notesDialogText.value = '';
 }
-function truncateNotes(text: string, maxLength = 60) {
+function truncateNotes(text: string, maxLength = 30) {
   if (!text) return '';
   return text.length > maxLength ? text.slice(0, maxLength) + '...' : text;
 }
@@ -192,7 +212,9 @@ async function handleEdit() {
         toast.success('Lab result updated successfully');
         showEditDialog.value = false;
         // Update local data
-        Object.assign(selectedLabResult.value, editForm.data());
+        if (selectedLabResult.value) {
+          Object.assign(selectedLabResult.value, editForm.data());
+        }
       },
       onError: () => {
         toast.error('Failed to update lab result');
@@ -227,7 +249,9 @@ async function handleAssign() {
       onSuccess: () => {
         toast.success('Lab result assigned successfully');
         showAssignDialog.value = false;
-        selectedLabResult.value.doctor = assignForm.doctor;
+        if (selectedLabResult.value) {
+          selectedLabResult.value.doctor = assignForm.doctor;
+        }
       },
       onError: () => {
         toast.error('Failed to assign lab result');
@@ -266,9 +290,9 @@ async function handleDelete() {
 
 // Export dialog state for single record
 const showSingleExportDialog = ref(false);
-const singleExportLabResult = ref(null);
+const singleExportLabResult = ref<LabResult | null>(null);
 
-function handleExportSingle(id) {
+function handleExportSingle(id: number) {
   const record = allLabResults.value.find(v => v.id === id);
   if (!record) {
     toast.error('Lab result not found');
@@ -500,7 +524,8 @@ function handleBulkExport() {
   const selected = allLabResults.value.filter(r => selectedIds.value.includes(r.id));
   let csv = 'ID,Patient,Date,Type,Result,Doctor,Notes\n';
   for (const l of selected) {
-    csv += `"${l.id}","${l.patient?.name || ''}","${l.date}","${l.type}","${l.result}","${l.doctor}","${l.notes?.replace(/"/g, '""') || ''}"\n`;
+    const patientName = typeof l.patient === 'object' && l.patient !== null ? l.patient.name : l.patient || '';
+    csv += `"${l.id}","${patientName}","${l.date}","${l.type}","${l.result}","${l.doctor}","${l.notes?.replace(/\"/g, '""') || ''}"\n`;
   }
   const blob = new Blob([csv], { type: 'text/csv' });
   const url = URL.createObjectURL(blob);
@@ -514,7 +539,7 @@ function handleBulkExport() {
 
 // Activity Log Page
 const showActivityLog = ref(false);
-const activityLogs = ref([]);
+const activityLogs = ref<ActivityLogEntry[]>([]);
 const activityLoading = ref(false);
 const activitySearch = ref('');
 const filteredActivityLogs = computed(() => {
@@ -529,7 +554,7 @@ const filteredActivityLogs = computed(() => {
     );
   });
 });
-function activityLogSummary(log) {
+function activityLogSummary(log: ActivityLogEntry) {
   if (log.action === 'assign' && log.details?.old_doctor !== undefined) {
     return `Doctor changed from ${log.details.old_doctor} to ${log.details.new_doctor}`;
   }
@@ -544,11 +569,15 @@ function activityLogSummary(log) {
   }
   return '';
 }
-function subjectLink(log) {
+function subjectLink(log: ActivityLogEntry) {
   if (log.subject_type === 'LabResult' && log.subject_id) {
     return `/admin/lab-results?id=${log.subject_id}`;
   }
   return null;
+}
+function getSubjectLink(log: ActivityLogEntry): string | null {
+  const link = subjectLink(log);
+  return typeof link === 'string' && link ? link : null;
 }
 async function fetchActivityLogs() {
   activityLoading.value = true;
@@ -580,401 +609,404 @@ function confirmBulkExport() { handleBulkExport(); showBulkExportDialog.value = 
   <AppLayout :breadcrumbs="breadcrumbs">
     <div class="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 dark:from-gray-900 dark:via-gray-800 dark:to-purple-900">
       <div class="max-w-screen-xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
-        <!-- Header -->
-        <div class="relative overflow-hidden bg-gradient-to-r from-blue-600 via-purple-600 to-blue-800 rounded-3xl p-8 mb-8 shadow-2xl">
-          <div class="absolute inset-0 bg-black opacity-10"></div>
-          <div class="absolute -top-4 -right-4 w-24 h-24 bg-white opacity-10 rounded-full blur-xl"></div>
-          <div class="absolute -bottom-4 -left-4 w-32 h-32 bg-white opacity-5 rounded-full blur-xl"></div>
-          <div class="relative z-10">
-            <div class="flex items-center gap-4 mb-4">
-              <div class="w-16 h-16 bg-white bg-opacity-20 rounded-2xl flex items-center justify-center backdrop-blur-sm">
-                <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M24 40h32M40 24v32" />
-                </svg>
+        <AppSidebarHeader :breadcrumbs="breadcrumbs" class="w-full" />
+        <div class="w-full overflow-x-auto">
+          <!-- Header and Table Scrollable Wrapper -->
+          <div class="relative overflow-hidden bg-gradient-to-r from-blue-600 via-purple-600 to-blue-800 rounded-3xl p-8 mb-8 shadow-2xl">
+            <div class="absolute inset-0 bg-black opacity-10"></div>
+            <div class="absolute -top-4 -right-4 w-24 h-24 bg-white opacity-10 rounded-full blur-xl"></div>
+            <div class="absolute -bottom-4 -left-4 w-32 h-32 bg-white opacity-5 rounded-full blur-xl"></div>
+            <div class="relative z-10">
+              <div class="flex items-center gap-4 mb-4">
+                <div class="w-16 h-16 bg-white bg-opacity-20 rounded-2xl flex items-center justify-center backdrop-blur-sm">
+                  <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M24 40h32M40 24v32" />
+                  </svg>
+                </div>
+                <div>
+                  <h1 class="text-4xl font-bold text-white">All Lab Results</h1>
+                  <p class="text-blue-100 text-lg">Admin Panel</p>
+                </div>
               </div>
-              <div>
-                <h1 class="text-4xl font-bold text-white">All Lab Results</h1>
-                <p class="text-blue-100 text-lg">Admin Panel</p>
+              <p class="text-blue-100 text-lg">
+                View, edit, assign, delete, and export all lab results in the system.
+              </p>
+            </div>
+          </div>
+          <!-- Search and Actions, Table, etc. -->
+          <Card class="rounded-3xl border-0 shadow-xl bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm mb-8 min-w-[1100px]">
+            <CardContent class="p-6 flex flex-col md:flex-row md:items-center gap-4">
+              <Input
+                v-model="searchQuery"
+                placeholder="Search by type, doctor, patient, or result..."
+                class="max-w-md"
+              />
+              <Button variant="outline" @click="openExportDialog" class="ml-auto">Export</Button>
+            </CardContent>
+          </Card>
+          <!-- Error Display -->
+          <Card v-if="error" class="rounded-3xl border-0 shadow-xl bg-red-50 dark:bg-red-900/80 mb-6">
+            <CardContent class="p-4 text-center text-red-600">
+              {{ error }}
+            </CardContent>
+          </Card>
+          <!-- Loading State -->
+          <Card v-else-if="loading" class="rounded-3xl border-0 shadow-xl bg-white/80 dark:bg-gray-900/80 mb-6">
+            <CardContent class="p-6 space-y-4">
+              <Skeleton class="h-8 w-full" />
+              <Skeleton class="h-8 w-full" />
+              <Skeleton class="h-8 w-full" />
+            </CardContent>
+          </Card>
+          <!-- Lab Results Table -->
+          <Card v-else class="rounded-3xl border-0 shadow-xl bg-white/80 dark:bg-gray-900/80 mb-6">
+            <CardHeader>
+              <CardTitle>All Lab Results</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div class="w-full overflow-x-auto">
+                <div v-if="selectedIds.length > 0" class="mb-4 flex gap-2 items-center bg-muted/30 p-2 rounded">
+                  <span class="font-medium">Bulk Actions:</span>
+                  <Button size="sm" variant="outline" @click="openBulkExportDialog" :disabled="selectedIds.length === 0">Export</Button>
+                  <Button size="sm" variant="outline" @click="openBulkAssignDialog" :disabled="selectedIds.length === 0">Assign</Button>
+                  <Button size="sm" variant="destructive" @click="openBulkDeleteDialog" :disabled="selectedIds.length === 0">Delete</Button>
+                  <span class="ml-2 text-xs text-muted-foreground">{{ selectedIds.length }} selected</span>
+                </div>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>
+                        <input type="checkbox" :checked="allSelected" @change="toggleSelectAll" />
+                      </TableHead>
+                      <TableHead class="cursor-pointer" @click="toggleSort('date')">
+                        Date
+                        <span v-if="sortColumn === 'date'" class="ml-1">
+                          {{ sortDirection === 'asc' ? '↑' : '↓' }}
+                        </span>
+                      </TableHead>
+                      <TableHead class="cursor-pointer" @click="toggleSort('type')">
+                        Type
+                        <span v-if="sortColumn === 'type'" class="ml-1">
+                          {{ sortDirection === 'asc' ? '↑' : '↓' }}
+                        </span>
+                      </TableHead>
+                      <TableHead class="cursor-pointer" @click="toggleSort('result')">
+                        Result
+                        <span v-if="sortColumn === 'result'" class="ml-1">
+                          {{ sortDirection === 'asc' ? '↑' : '↓' }}
+                        </span>
+                      </TableHead>
+                      <TableHead class="cursor-pointer" @click="toggleSort('doctor')">
+                        Doctor
+                        <span v-if="sortColumn === 'doctor'" class="ml-1">
+                          {{ sortDirection === 'asc' ? '↑' : '↓' }}
+                        </span>
+                      </TableHead>
+                      <TableHead class="cursor-pointer" @click="toggleSort('patient')">
+                        Patient
+                      </TableHead>
+                      <TableHead>Notes</TableHead>
+                      <TableHead>Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    <TableRow v-for="item in paginatedLabResults" :key="item.id" class="hover:bg-muted/50 transition-colors">
+                      <TableCell>
+                        <input type="checkbox" :checked="selectedIds.includes(item.id)" @change="() => toggleSelect(item.id)" />
+                      </TableCell>
+                      <TableCell>{{ formatDate(item.date) }}</TableCell>
+                      <TableCell>{{ item.type || 'N/A' }}</TableCell>
+                      <TableCell>{{ item.result || 'N/A' }}</TableCell>
+                      <TableCell>{{ item.doctor || 'N/A' }}</TableCell>
+                      <TableCell>{{ typeof item.patient === 'object' && item.patient !== null ? item.patient.name : item.patient || 'N/A' }}</TableCell>
+                      <TableCell>
+                        <span v-if="item.notes && item.notes.length > 30">
+                          {{ truncateNotes(item.notes) }}
+                          <Button variant="link" size="sm" class="px-1 py-0 h-auto align-baseline" @click="openNotesDialog(item.notes)">View More</Button>
+                        </span>
+                        <span v-else>{{ item.notes }}</span>
+                      </TableCell>
+                      <TableCell>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="sm" class="h-8 w-8 p-0">
+                              <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" />
+                              </svg>
+                              <span class="sr-only">Open menu</span>
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end" class="w-48">
+                            <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem @click="openEditDialog(item)">Edit</DropdownMenuItem>
+                            <DropdownMenuItem @click="openAssignDialog(item)">Assign</DropdownMenuItem>
+                            <DropdownMenuItem @click="() => handleExportSingle(item.id)">Export</DropdownMenuItem>
+                            <DropdownMenuItem @click="openDeleteDialog(item)" class="text-red-600 focus:text-red-600">Delete</DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </TableCell>
+                    </TableRow>
+                  </TableBody>
+                </Table>
+              </div>
+            </CardContent>
+            <div class="flex flex-col sm:flex-row justify-between items-center p-4 border-t gap-4">
+              <span class="text-sm text-muted-foreground">
+                Showing {{ (page - 1) * pageSize + 1 }} to {{ Math.min(page * pageSize, filteredLabResults.length) }} of {{ filteredLabResults.length }} lab results
+              </span>
+              <div class="flex gap-2 flex-wrap justify-center">
+                <Button 
+                  :disabled="page === 1" 
+                  variant="outline" 
+                  size="sm" 
+                  @click="page--"
+                >
+                  Prev
+                </Button>
+                <Button
+                  v-for="pageNumber in getPageNumbers()"
+                  :key="pageNumber"
+                  :variant="page === pageNumber ? 'default' : 'outline'"
+                  size="sm"
+                  @click="goToPage(pageNumber)"
+                >
+                  {{ pageNumber }}
+                </Button>
+                <Button 
+                  :disabled="page === totalPages || totalPages === 0" 
+                  variant="outline" 
+                  size="sm" 
+                  @click="page++"
+                >
+                  Next
+                </Button>
               </div>
             </div>
-            <p class="text-blue-100 text-lg">
-              View, edit, assign, delete, and export all lab results in the system.
-            </p>
-          </div>
+          </Card>
+          <!-- Edit Dialog -->
+          <Dialog v-model:open="showEditDialog">
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Edit Lab Result</DialogTitle>
+                <DialogDescription>
+                  Edit the details of the selected lab result.
+                </DialogDescription>
+              </DialogHeader>
+              <form @submit.prevent="handleEdit" class="space-y-4">
+                <div>
+                  <label class="block text-sm font-medium mb-1">Date</label>
+                  <Input v-model="editForm.date" type="date" required />
+                  <div v-if="editForm.errors.date" class="text-red-600 text-xs mt-1">{{ editForm.errors.date }}</div>
+                </div>
+                <div>
+                  <label class="block text-sm font-medium mb-1">Type</label>
+                  <Input v-model="editForm.type" required />
+                  <div v-if="editForm.errors.type" class="text-red-600 text-xs mt-1">{{ editForm.errors.type }}</div>
+                </div>
+                <div>
+                  <label class="block text-sm font-medium mb-1">Result</label>
+                  <Input v-model="editForm.result" required />
+                  <div v-if="editForm.errors.result" class="text-red-600 text-xs mt-1">{{ editForm.errors.result }}</div>
+                </div>
+                <div>
+                  <label class="block text-sm font-medium mb-1">Doctor</label>
+                  <Input v-model="editForm.doctor" required />
+                  <div v-if="editForm.errors.doctor" class="text-red-600 text-xs mt-1">{{ editForm.errors.doctor }}</div>
+                </div>
+                <div>
+                  <label class="block text-sm font-medium mb-1">Notes</label>
+                  <Input v-model="editForm.notes" />
+                  <div v-if="editForm.errors.notes" class="text-red-600 text-xs mt-1">{{ editForm.errors.notes }}</div>
+                </div>
+                <DialogFooter>
+                  <Button variant="outline" @click="showEditDialog = false" :disabled="editLoading">Cancel</Button>
+                  <Button variant="default" type="submit" :loading="editLoading">Save</Button>
+                </DialogFooter>
+              </form>
+            </DialogContent>
+          </Dialog>
+          <!-- Assign Dialog -->
+          <Dialog v-model:open="showAssignDialog">
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Assign Lab Result</DialogTitle>
+              </DialogHeader>
+              <form @submit.prevent="handleAssign" class="space-y-4">
+                <div>
+                  <label class="block text-sm font-medium mb-1">Doctor</label>
+                  <Input v-model="assignForm.doctor" required placeholder="Doctor name" />
+                  <div v-if="assignForm.errors.doctor" class="text-red-600 text-xs mt-1">{{ assignForm.errors.doctor }}</div>
+                </div>
+                <DialogFooter>
+                  <Button variant="outline" @click="showAssignDialog = false" :disabled="assignLoading">Cancel</Button>
+                  <Button variant="default" type="submit" :loading="assignLoading">Assign</Button>
+                </DialogFooter>
+              </form>
+            </DialogContent>
+          </Dialog>
+          <!-- Delete Dialog -->
+          <Dialog v-model:open="showDeleteDialog">
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Delete Lab Result</DialogTitle>
+                <DialogDescription>
+                  Are you sure you want to delete this lab result?
+                </DialogDescription>
+              </DialogHeader>
+              <DialogFooter>
+                <Button variant="outline" @click="showDeleteDialog = false" :disabled="deleteLoading">Cancel</Button>
+                <Button variant="destructive" @click="handleDelete" :loading="deleteLoading">Delete</Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+          <!-- Export Dialog -->
+          <Dialog v-model:open="showExportDialog">
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Export Lab Results</DialogTitle>
+                <DialogDescription>
+                  Export all lab results as CSV or Excel file.
+                </DialogDescription>
+              </DialogHeader>
+              <div class="flex flex-col gap-2">
+                <Button variant="outline" @click="handleExportCSV">Export as CSV</Button>
+                <Button variant="outline" @click="handleExportExcel">Export as Excel</Button>
+                <Button variant="outline" @click="handleExportPDF">Export as PDF</Button>
+              </div>
+              <DialogFooter>
+                <Button variant="outline" @click="showExportDialog = false">Close</Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+          <!-- Notes Dialog -->
+          <Dialog v-model:open="showNotesDialog">
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Lab Result Notes</DialogTitle>
+              </DialogHeader>
+              <div class="whitespace-pre-line text-base">{{ notesDialogText }}</div>
+              <DialogFooter>
+                <Button variant="outline" @click="closeNotesDialog">Close</Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+          <!-- Bulk Assign Dialog -->
+          <Dialog v-model:open="showBulkAssignDialog">
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Assign Doctor to Selected Lab Results</DialogTitle>
+                <DialogDescription>
+                  Assign a doctor to the selected lab results.
+                </DialogDescription>
+              </DialogHeader>
+              <form @submit.prevent="handleBulkAssign" class="space-y-4">
+                <div>
+                  <label class="block text-sm font-medium mb-1">Doctor</label>
+                  <Input v-model="bulkAssignForm.doctor" required placeholder="Doctor name" />
+                  <div v-if="bulkAssignForm.errors.doctor" class="text-red-600 text-xs mt-1">{{ bulkAssignForm.errors.doctor }}</div>
+                </div>
+                <DialogFooter>
+                  <Button variant="outline" @click="showBulkAssignDialog = false" :disabled="bulkAssignLoading">Cancel</Button>
+                  <Button variant="default" type="submit" :loading="bulkAssignLoading">Assign</Button>
+                </DialogFooter>
+              </form>
+            </DialogContent>
+          </Dialog>
+          <!-- Bulk Delete Dialog -->
+          <Dialog v-model:open="showBulkDeleteDialog">
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Delete Selected Lab Results</DialogTitle>
+                <DialogDescription>
+                  Are you sure you want to delete the selected lab results?
+                </DialogDescription>
+              </DialogHeader>
+              <DialogFooter>
+                <Button variant="outline" @click="showBulkDeleteDialog = false" :disabled="bulkDeleteLoading">Cancel</Button>
+                <Button variant="destructive" @click="handleBulkDelete" :loading="bulkDeleteLoading">Delete</Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+          <!-- Bulk Export Confirmation Dialog -->
+          <Dialog v-model:open="showBulkExportDialog">
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Export Selected Lab Results</DialogTitle>
+                <DialogDescription>
+                  Are you sure you want to export the selected lab results as CSV?
+                </DialogDescription>
+              </DialogHeader>
+              <DialogFooter>
+                <Button variant="outline" @click="showBulkExportDialog = false">Cancel</Button>
+                <Button variant="default" @click="confirmBulkExport">Export</Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+          <!-- Activity Log Dialog -->
+          <Dialog v-model:open="showActivityLog">
+            <DialogContent class="max-w-2xl">
+              <DialogHeader>
+                <DialogTitle>Admin Activity Log</DialogTitle>
+              </DialogHeader>
+              <div class="mb-2 flex gap-2 items-center">
+                <Input v-model="activitySearch" placeholder="Search logs..." class="max-w-xs" />
+              </div>
+              <div v-if="activityLoading" class="p-4">Loading...</div>
+              <div v-else>
+                <table class="w-full text-sm border">
+                  <thead>
+                    <tr>
+                      <th class="border px-2 py-1">Time</th>
+                      <th class="border px-2 py-1">User</th>
+                      <th class="border px-2 py-1">Action</th>
+                      <th class="border px-2 py-1">Subject</th>
+                      <th class="border px-2 py-1">Summary</th>
+                      <th class="border px-2 py-1">Details</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr v-for="log in filteredActivityLogs" :key="log.id">
+                      <td class="border px-2 py-1">{{ new Date(log.created_at).toLocaleString() }}</td>
+                      <td class="border px-2 py-1">{{ log.user?.name || 'System' }}</td>
+                      <td class="border px-2 py-1">{{ log.action }}</td>
+                      <td class="border px-2 py-1">
+                        <a v-if="getSubjectLink(log)" :href="getSubjectLink(log) as string" class="text-blue-600 underline" target="_blank">{{ log.subject_type }} #{{ log.subject_id }}</a>
+                        <span v-else>{{ log.subject_type }} #{{ log.subject_id }}</span>
+                      </td>
+                      <td class="border px-2 py-1">{{ activityLogSummary(log) }}</td>
+                      <td class="border px-2 py-1">
+                        <pre class="whitespace-pre-wrap text-xs">{{ JSON.stringify(log.details, null, 2) }}</pre>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+              <DialogFooter>
+                <Button variant="outline" @click="closeActivityLog">Close</Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+          <!-- Single Export Dialog -->
+          <Dialog v-model:open="showSingleExportDialog">
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Export Lab Result</DialogTitle>
+                <DialogDescription>Export this lab result as CSV, Excel, or PDF.</DialogDescription>
+              </DialogHeader>
+              <div class="flex flex-col gap-2">
+                <Button variant="outline" @click="handleExportSingleCSV">Export as CSV</Button>
+                <Button variant="outline" @click="handleExportSingleExcel">Export as Excel</Button>
+                <Button variant="outline" @click="handleExportSinglePDF">Export as PDF</Button>
+              </div>
+              <DialogFooter>
+                <Button variant="outline" @click="showSingleExportDialog = false">Close</Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+          <!-- Add a sidebar or header button for Activity Log (admin only) -->
+          <Button v-if="user && user.role === 'admin'" variant="outline" class="mb-4" @click="openActivityLog">View Activity Log</Button>
         </div>
-        <!-- Search and Actions -->
-        <Card class="rounded-3xl border-0 shadow-xl bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm mb-8">
-          <CardContent class="p-6 flex flex-col md:flex-row md:items-center gap-4">
-            <Input
-              v-model="searchQuery"
-              placeholder="Search by type, doctor, patient, or result..."
-              class="max-w-md"
-            />
-            <Button variant="outline" @click="openExportDialog" class="ml-auto">Export</Button>
-          </CardContent>
-        </Card>
-        <!-- Error Display -->
-        <Card v-if="error" class="rounded-3xl border-0 shadow-xl bg-red-50 dark:bg-red-900/80 mb-6">
-          <CardContent class="p-4 text-center text-red-600">
-            {{ error }}
-          </CardContent>
-        </Card>
-        <!-- Loading State -->
-        <Card v-else-if="loading" class="rounded-3xl border-0 shadow-xl bg-white/80 dark:bg-gray-900/80 mb-6">
-          <CardContent class="p-6 space-y-4">
-            <Skeleton class="h-8 w-full" />
-            <Skeleton class="h-8 w-full" />
-            <Skeleton class="h-8 w-full" />
-          </CardContent>
-        </Card>
-        <!-- Lab Results Table -->
-        <Card v-else class="rounded-3xl border-0 shadow-xl bg-white/80 dark:bg-gray-900/80 mb-6">
-          <CardHeader>
-            <CardTitle>All Lab Results</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div class="w-full overflow-x-auto">
-              <div v-if="selectedIds.length > 0" class="mb-4 flex gap-2 items-center bg-muted/30 p-2 rounded">
-                <span class="font-medium">Bulk Actions:</span>
-                <Button size="sm" variant="outline" @click="openBulkExportDialog" :disabled="selectedIds.length === 0">Export</Button>
-                <Button size="sm" variant="outline" @click="openBulkAssignDialog" :disabled="selectedIds.length === 0">Assign</Button>
-                <Button size="sm" variant="destructive" @click="openBulkDeleteDialog" :disabled="selectedIds.length === 0">Delete</Button>
-                <span class="ml-2 text-xs text-muted-foreground">{{ selectedIds.length }} selected</span>
-              </div>
-              <Table class="min-w-[1100px] w-full">
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>
-                      <input type="checkbox" :checked="allSelected" @change="toggleSelectAll" />
-                    </TableHead>
-                    <TableHead class="cursor-pointer" @click="toggleSort('date')">
-                      Date
-                      <span v-if="sortColumn === 'date'" class="ml-1">
-                        {{ sortDirection === 'asc' ? '↑' : '↓' }}
-                      </span>
-                    </TableHead>
-                    <TableHead class="cursor-pointer" @click="toggleSort('type')">
-                      Type
-                      <span v-if="sortColumn === 'type'" class="ml-1">
-                        {{ sortDirection === 'asc' ? '↑' : '↓' }}
-                      </span>
-                    </TableHead>
-                    <TableHead class="cursor-pointer" @click="toggleSort('result')">
-                      Result
-                      <span v-if="sortColumn === 'result'" class="ml-1">
-                        {{ sortDirection === 'asc' ? '↑' : '↓' }}
-                      </span>
-                    </TableHead>
-                    <TableHead class="cursor-pointer" @click="toggleSort('doctor')">
-                      Doctor
-                      <span v-if="sortColumn === 'doctor'" class="ml-1">
-                        {{ sortDirection === 'asc' ? '↑' : '↓' }}
-                      </span>
-                    </TableHead>
-                    <TableHead class="cursor-pointer" @click="toggleSort('patient')">
-                      Patient
-                    </TableHead>
-                    <TableHead>Notes</TableHead>
-                    <TableHead>Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  <TableRow v-for="item in paginatedLabResults" :key="item.id" class="hover:bg-muted/50 transition-colors">
-                    <TableCell>
-                      <input type="checkbox" :checked="selectedIds.includes(item.id)" @change="() => toggleSelect(item.id)" />
-                    </TableCell>
-                    <TableCell>{{ formatDate(item.date) }}</TableCell>
-                    <TableCell>{{ item.type || 'N/A' }}</TableCell>
-                    <TableCell>{{ item.result || 'N/A' }}</TableCell>
-                    <TableCell>{{ item.doctor || 'N/A' }}</TableCell>
-                    <TableCell>{{ item.patient?.name || 'N/A' }}</TableCell>
-                    <TableCell>
-                      <span v-if="item.notes && item.notes.length > 60">
-                        {{ truncateNotes(item.notes) }}
-                        <Button variant="link" size="sm" class="px-1 py-0 h-auto align-baseline" @click="openNotesDialog(item.notes)">View More</Button>
-                      </span>
-                      <span v-else>{{ item.notes }}</span>
-                    </TableCell>
-                    <TableCell>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="sm" class="h-8 w-8 p-0">
-                            <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" />
-                            </svg>
-                            <span class="sr-only">Open menu</span>
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" class="w-48">
-                          <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem @click="openEditDialog(item)">Edit</DropdownMenuItem>
-                          <DropdownMenuItem @click="openAssignDialog(item)">Assign</DropdownMenuItem>
-                          <DropdownMenuItem @click="() => handleExportSingle(item.id)">Export</DropdownMenuItem>
-                          <DropdownMenuItem @click="openDeleteDialog(item)" class="text-red-600 focus:text-red-600">Delete</DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </TableCell>
-                  </TableRow>
-                </TableBody>
-              </Table>
-            </div>
-          </CardContent>
-          <div class="flex flex-col sm:flex-row justify-between items-center p-4 border-t gap-4">
-            <span class="text-sm text-muted-foreground">
-              Showing {{ (page - 1) * pageSize + 1 }} to {{ Math.min(page * pageSize, filteredLabResults.length) }} of {{ filteredLabResults.length }} lab results
-            </span>
-            <div class="flex gap-2 flex-wrap justify-center">
-              <Button 
-                :disabled="page === 1" 
-                variant="outline" 
-                size="sm" 
-                @click="page--"
-              >
-                Prev
-              </Button>
-              <Button
-                v-for="pageNumber in getPageNumbers()"
-                :key="pageNumber"
-                :variant="page === pageNumber ? 'default' : 'outline'"
-                size="sm"
-                @click="goToPage(pageNumber)"
-              >
-                {{ pageNumber }}
-              </Button>
-              <Button 
-                :disabled="page === totalPages || totalPages === 0" 
-                variant="outline" 
-                size="sm" 
-                @click="page++"
-              >
-                Next
-              </Button>
-            </div>
-          </div>
-        </Card>
-        <!-- Edit Dialog -->
-        <Dialog v-model:open="showEditDialog">
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Edit Lab Result</DialogTitle>
-              <DialogDescription>
-                Edit the details of the selected lab result.
-              </DialogDescription>
-            </DialogHeader>
-            <form @submit.prevent="handleEdit" class="space-y-4">
-              <div>
-                <label class="block text-sm font-medium mb-1">Date</label>
-                <Input v-model="editForm.date" type="date" required />
-                <div v-if="editForm.errors.date" class="text-red-600 text-xs mt-1">{{ editForm.errors.date }}</div>
-              </div>
-              <div>
-                <label class="block text-sm font-medium mb-1">Type</label>
-                <Input v-model="editForm.type" required />
-                <div v-if="editForm.errors.type" class="text-red-600 text-xs mt-1">{{ editForm.errors.type }}</div>
-              </div>
-              <div>
-                <label class="block text-sm font-medium mb-1">Result</label>
-                <Input v-model="editForm.result" required />
-                <div v-if="editForm.errors.result" class="text-red-600 text-xs mt-1">{{ editForm.errors.result }}</div>
-              </div>
-              <div>
-                <label class="block text-sm font-medium mb-1">Doctor</label>
-                <Input v-model="editForm.doctor" required />
-                <div v-if="editForm.errors.doctor" class="text-red-600 text-xs mt-1">{{ editForm.errors.doctor }}</div>
-              </div>
-              <div>
-                <label class="block text-sm font-medium mb-1">Notes</label>
-                <Input v-model="editForm.notes" />
-                <div v-if="editForm.errors.notes" class="text-red-600 text-xs mt-1">{{ editForm.errors.notes }}</div>
-              </div>
-              <DialogFooter>
-                <Button variant="outline" @click="showEditDialog = false" :disabled="editLoading">Cancel</Button>
-                <Button variant="default" type="submit" :loading="editLoading">Save</Button>
-              </DialogFooter>
-            </form>
-          </DialogContent>
-        </Dialog>
-        <!-- Assign Dialog -->
-        <Dialog v-model:open="showAssignDialog">
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Assign Lab Result</DialogTitle>
-            </DialogHeader>
-            <form @submit.prevent="handleAssign" class="space-y-4">
-              <div>
-                <label class="block text-sm font-medium mb-1">Doctor</label>
-                <Input v-model="assignForm.doctor" required placeholder="Doctor name" />
-                <div v-if="assignForm.errors.doctor" class="text-red-600 text-xs mt-1">{{ assignForm.errors.doctor }}</div>
-              </div>
-              <DialogFooter>
-                <Button variant="outline" @click="showAssignDialog = false" :disabled="assignLoading">Cancel</Button>
-                <Button variant="default" type="submit" :loading="assignLoading">Assign</Button>
-              </DialogFooter>
-            </form>
-          </DialogContent>
-        </Dialog>
-        <!-- Delete Dialog -->
-        <Dialog v-model:open="showDeleteDialog">
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Delete Lab Result</DialogTitle>
-              <DialogDescription>
-                Are you sure you want to delete this lab result?
-              </DialogDescription>
-            </DialogHeader>
-            <DialogFooter>
-              <Button variant="outline" @click="showDeleteDialog = false" :disabled="deleteLoading">Cancel</Button>
-              <Button variant="destructive" @click="handleDelete" :loading="deleteLoading">Delete</Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-        <!-- Export Dialog -->
-        <Dialog v-model:open="showExportDialog">
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Export Lab Results</DialogTitle>
-              <DialogDescription>
-                Export all lab results as CSV or Excel file.
-              </DialogDescription>
-            </DialogHeader>
-            <div class="flex flex-col gap-2">
-              <Button variant="outline" @click="handleExportCSV">Export as CSV</Button>
-              <Button variant="outline" @click="handleExportExcel">Export as Excel</Button>
-              <Button variant="outline" @click="handleExportPDF">Export as PDF</Button>
-            </div>
-            <DialogFooter>
-              <Button variant="outline" @click="showExportDialog = false">Close</Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-        <!-- Notes Dialog -->
-        <Dialog v-model:open="showNotesDialog">
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Lab Result Notes</DialogTitle>
-            </DialogHeader>
-            <div class="whitespace-pre-line text-base">{{ notesDialogText }}</div>
-            <DialogFooter>
-              <Button variant="outline" @click="closeNotesDialog">Close</Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-        <!-- Bulk Assign Dialog -->
-        <Dialog v-model:open="showBulkAssignDialog">
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Assign Doctor to Selected Lab Results</DialogTitle>
-              <DialogDescription>
-                Assign a doctor to the selected lab results.
-              </DialogDescription>
-            </DialogHeader>
-            <form @submit.prevent="handleBulkAssign" class="space-y-4">
-              <div>
-                <label class="block text-sm font-medium mb-1">Doctor</label>
-                <Input v-model="bulkAssignForm.doctor" required placeholder="Doctor name" />
-                <div v-if="bulkAssignForm.errors.doctor" class="text-red-600 text-xs mt-1">{{ bulkAssignForm.errors.doctor }}</div>
-              </div>
-              <DialogFooter>
-                <Button variant="outline" @click="showBulkAssignDialog = false" :disabled="bulkAssignLoading">Cancel</Button>
-                <Button variant="default" type="submit" :loading="bulkAssignLoading">Assign</Button>
-              </DialogFooter>
-            </form>
-          </DialogContent>
-        </Dialog>
-        <!-- Bulk Delete Dialog -->
-        <Dialog v-model:open="showBulkDeleteDialog">
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Delete Selected Lab Results</DialogTitle>
-              <DialogDescription>
-                Are you sure you want to delete the selected lab results?
-              </DialogDescription>
-            </DialogHeader>
-            <DialogFooter>
-              <Button variant="outline" @click="showBulkDeleteDialog = false" :disabled="bulkDeleteLoading">Cancel</Button>
-              <Button variant="destructive" @click="handleBulkDelete" :loading="bulkDeleteLoading">Delete</Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-        <!-- Bulk Export Confirmation Dialog -->
-        <Dialog v-model:open="showBulkExportDialog">
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Export Selected Lab Results</DialogTitle>
-              <DialogDescription>
-                Are you sure you want to export the selected lab results as CSV?
-              </DialogDescription>
-            </DialogHeader>
-            <DialogFooter>
-              <Button variant="outline" @click="showBulkExportDialog = false">Cancel</Button>
-              <Button variant="default" @click="confirmBulkExport">Export</Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-        <!-- Activity Log Dialog -->
-        <Dialog v-model:open="showActivityLog">
-          <DialogContent class="max-w-2xl">
-            <DialogHeader>
-              <DialogTitle>Admin Activity Log</DialogTitle>
-            </DialogHeader>
-            <div class="mb-2 flex gap-2 items-center">
-              <Input v-model="activitySearch" placeholder="Search logs..." class="max-w-xs" />
-            </div>
-            <div v-if="activityLoading" class="p-4">Loading...</div>
-            <div v-else>
-              <table class="w-full text-sm border">
-                <thead>
-                  <tr>
-                    <th class="border px-2 py-1">Time</th>
-                    <th class="border px-2 py-1">User</th>
-                    <th class="border px-2 py-1">Action</th>
-                    <th class="border px-2 py-1">Subject</th>
-                    <th class="border px-2 py-1">Summary</th>
-                    <th class="border px-2 py-1">Details</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr v-for="log in filteredActivityLogs" :key="log.id">
-                    <td class="border px-2 py-1">{{ new Date(log.created_at).toLocaleString() }}</td>
-                    <td class="border px-2 py-1">{{ log.user?.name || 'System' }}</td>
-                    <td class="border px-2 py-1">{{ log.action }}</td>
-                    <td class="border px-2 py-1">
-                      <a v-if="subjectLink(log)" :href="subjectLink(log)" class="text-blue-600 underline" target="_blank">{{ log.subject_type }} #{{ log.subject_id }}</a>
-                      <span v-else>{{ log.subject_type }} #{{ log.subject_id }}</span>
-                    </td>
-                    <td class="border px-2 py-1">{{ activityLogSummary(log) }}</td>
-                    <td class="border px-2 py-1">
-                      <pre class="whitespace-pre-wrap text-xs">{{ JSON.stringify(log.details, null, 2) }}</pre>
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-            <DialogFooter>
-              <Button variant="outline" @click="closeActivityLog">Close</Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-        <!-- Single Export Dialog -->
-        <Dialog v-model:open="showSingleExportDialog">
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Export Lab Result</DialogTitle>
-              <DialogDescription>Export this lab result as CSV, Excel, or PDF.</DialogDescription>
-            </DialogHeader>
-            <div class="flex flex-col gap-2">
-              <Button variant="outline" @click="handleExportSingleCSV">Export as CSV</Button>
-              <Button variant="outline" @click="handleExportSingleExcel">Export as Excel</Button>
-              <Button variant="outline" @click="handleExportSinglePDF">Export as PDF</Button>
-            </div>
-            <DialogFooter>
-              <Button variant="outline" @click="showSingleExportDialog = false">Close</Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-        <!-- Add a sidebar or header button for Activity Log (admin only) -->
-        <Button v-if="user && user.role === 'admin'" variant="outline" class="mb-4" @click="openActivityLog">View Activity Log</Button>
       </div>
     </div>
   </AppLayout>
