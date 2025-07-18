@@ -136,4 +136,20 @@ class User extends Authenticatable
             ->withPivot('role', 'assigned_at')
             ->withTimestamps();
     }
+
+    /**
+     * Messages sent by this user
+     */
+    public function sentMessages()
+    {
+        return $this->hasMany(Message::class, 'sender_id');
+    }
+
+    /**
+     * Messages received by this user
+     */
+    public function receivedMessages()
+    {
+        return $this->hasMany(Message::class, 'receiver_id');
+    }
 }

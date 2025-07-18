@@ -6,14 +6,10 @@ import { type NavItem } from '@/types';
 import { Link, usePage } from '@inertiajs/vue3';
 import { Folder, LayoutGrid, Calendar, FileText, Users, DollarSign, Stethoscope, Activity } from 'lucide-vue-next';
 import AppLogo from './AppLogo.vue';
-import { usePrescriptionBlink } from '@/composables/usePrescriptionBlink';
-import { useAppointmentBlink } from '@/composables/useAppointmentBlink';
 import AppearanceTabs from '@/components/AppearanceTabs.vue';
 
 const page = usePage();
 const user = page.props.auth.user;
-const { prescriptionBlink } = usePrescriptionBlink();
-const { appointmentBlink } = useAppointmentBlink();
 
 const patientNavItems: NavItem[] = [
     {
@@ -25,13 +21,11 @@ const patientNavItems: NavItem[] = [
         title: 'My Appointments',
         href: '/appointments',
         icon: Calendar,
-        blink: appointmentBlink,
     },
     {
         title: 'My Prescriptions',
         href: '/prescriptions',
         icon: FileText,
-        blink: prescriptionBlink,
     },
     {
         title: 'My Lab Results',
@@ -75,7 +69,6 @@ const adminNavItems: NavItem[] = [
         title: 'Admin Appointments',
         href: '/appointments',
         icon: Calendar,
-        blink: appointmentBlink,
     },
     {
         title: 'Admin Prescriptions',
@@ -114,7 +107,6 @@ const staffNavItems: NavItem[] = [
         title: 'My Appointments',
         href: '/staff/appointments',
         icon: Calendar,
-        blink: appointmentBlink,
     },
     {
         title: 'My Patients',
@@ -125,7 +117,6 @@ const staffNavItems: NavItem[] = [
         title: 'My Prescriptions',
         href: '/staff/prescriptions',
         icon: FileText,
-        blink: prescriptionBlink,
     },
     {
         title: 'My Lab Results',

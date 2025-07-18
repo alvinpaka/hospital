@@ -12,6 +12,7 @@ import Select from '@/components/ui/select/Select.vue';
 import SelectTrigger from '@/components/ui/select/SelectTrigger.vue';
 import SelectContent from '@/components/ui/select/SelectContent.vue';
 import SelectItem from '@/components/ui/select/SelectItem.vue';
+import ChatBox from '@/components/ChatBox.vue';
 
 const page = usePage();
 const patientId = computed(() => page.props.patientId || page.props.id);
@@ -536,6 +537,7 @@ onMounted(() => {
           </Card>
         </TabsContent>
       </Tabs>
+      <ChatBox :receiver-id="patientId" />
     </div>
   </AppLayout>
 </template> 

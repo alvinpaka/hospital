@@ -141,12 +141,14 @@ function getPageNumbers() {
   return pages;
 }
 
-// Dialog states for edit, delete, assign, export
+// Dialog states for edit, delete, assign, export, view
 const showEditDialog = ref(false);
 const showDeleteDialog = ref(false);
 const showAssignDialog = ref(false);
 const showExportDialog = ref(false);
+const showViewDialog = ref(false);
 const selectedVitals = ref<VitalsRecord | null>(null);
+const viewVitals = ref<VitalsRecord | null>(null);
 
 function openEditDialog(record: VitalsRecord) {
   selectedVitals.value = record;
@@ -162,6 +164,10 @@ function openAssignDialog(record: VitalsRecord) {
 }
 function openExportDialog() {
   showExportDialog.value = true;
+}
+function openViewDialog(record: VitalsRecord) {
+  viewVitals.value = record;
+  showViewDialog.value = true;
 }
 
 // Edit Vitals form state
@@ -579,211 +585,207 @@ function closeActivityLog() {
   <AppLayout :breadcrumbs="breadcrumbs">
     <div class="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 dark:from-gray-900 dark:via-gray-800 dark:to-purple-900">
       <div class="max-w-screen-xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
-        <!-- Header -->
-        <div class="relative overflow-hidden bg-gradient-to-r from-blue-600 via-purple-600 to-blue-800 rounded-3xl p-8 mb-8 shadow-2xl">
-          <div class="absolute inset-0 bg-black opacity-10"></div>
-          <div class="absolute -top-4 -right-4 w-24 h-24 bg-white opacity-10 rounded-full blur-xl"></div>
-          <div class="absolute -bottom-4 -left-4 w-32 h-32 bg-white opacity-5 rounded-full blur-xl"></div>
-          <div class="relative z-10">
-            <div class="flex items-center gap-4 mb-4">
-              <div class="w-16 h-16 bg-white bg-opacity-20 rounded-2xl flex items-center justify-center backdrop-blur-sm">
-                <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M24 40h32M40 24v32" />
-                </svg>
+        <div class="w-full overflow-x-auto">
+          <!-- Header and Table Scrollable Wrapper -->
+          <div class="relative overflow-hidden bg-gradient-to-r from-blue-600 via-purple-600 to-blue-800 rounded-3xl p-8 mb-8 shadow-2xl">
+            <div class="absolute inset-0 bg-black opacity-10"></div>
+            <div class="absolute -top-4 -right-4 w-24 h-24 bg-white opacity-10 rounded-full blur-xl"></div>
+            <div class="absolute -bottom-4 -left-4 w-32 h-32 bg-white opacity-5 rounded-full blur-xl"></div>
+            <div class="relative z-10">
+              <div class="flex items-center gap-4 mb-4">
+                <div class="w-16 h-16 bg-white bg-opacity-20 rounded-2xl flex items-center justify-center backdrop-blur-sm">
+                  <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M24 40h32M40 24v32" />
+                  </svg>
+                </div>
+                <div>
+                  <h1 class="text-4xl font-bold text-white">All Vitals</h1>
+                  <p class="text-blue-100 text-lg">Admin Panel</p>
+                </div>
               </div>
-              <div>
-                <h1 class="text-4xl font-bold text-white">All Vitals</h1>
-                <p class="text-blue-100 text-lg">Admin Panel</p>
+              <p class="text-blue-100 text-lg">
+                View, edit, assign, delete, and export all vitals in the system.
+              </p>
+            </div>
+          </div>
+          <!-- Search and Actions -->
+          <Card class="rounded-3xl border-0 shadow-xl bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm mb-8 min-w-[1100px]">
+            <CardContent class="p-6 flex flex-col md:flex-row md:items-center gap-4">
+              <Input
+                v-model="searchQuery"
+                placeholder="Search by patient, nurse, value, or date..."
+                class="max-w-md"
+              />
+              <Button variant="outline" @click="openExportDialog" class="ml-auto">Export</Button>
+            </CardContent>
+          </Card>
+          <!-- Error Display -->
+          <Card v-if="error" class="rounded-3xl border-0 shadow-xl bg-red-50 dark:bg-red-900/80 mb-6 min-w-[1100px]">
+            <CardContent class="p-4 text-center text-red-600">
+              {{ error }}
+            </CardContent>
+          </Card>
+          <!-- Loading State -->
+          <Card v-else-if="loading" class="rounded-3xl border-0 shadow-xl bg-white/80 dark:bg-gray-900/80 mb-6 min-w-[1100px]">
+            <CardContent class="p-6 space-y-4">
+              <Skeleton class="h-8 w-full" />
+              <Skeleton class="h-8 w-full" />
+              <Skeleton class="h-8 w-full" />
+            </CardContent>
+          </Card>
+          <!-- Vitals Table -->
+          <Card v-else class="rounded-3xl border-0 shadow-xl bg-white/80 dark:bg-gray-900/80 mb-6 min-w-[1100px]">
+            <CardHeader>
+              <CardTitle>All Vitals</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div class="w-full overflow-x-auto">
+                <div v-if="selectedIds.length > 0" class="mb-4 flex gap-2 items-center bg-muted/30 p-2 rounded">
+                  <span class="font-medium">Bulk Actions:</span>
+                  <Button size="sm" variant="outline" @click="handleBulkExport">Export</Button>
+                  <Button size="sm" variant="outline" @click="openBulkAssignDialog">Assign</Button>
+                  <Button size="sm" variant="destructive" @click="openBulkDeleteDialog">Delete</Button>
+                  <span class="ml-2 text-xs text-muted-foreground">{{ selectedIds.length }} selected</span>
+                </div>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>
+                        <input type="checkbox" :checked="allSelected" @change="toggleSelectAll" />
+                      </TableHead>
+                      <TableHead class="cursor-pointer" @click="toggleSort('recorded_at')">
+                        Date
+                        <span v-if="sortColumn === 'recorded_at'" class="ml-1">
+                          {{ sortDirection === 'asc' ? '↑' : '↓' }}
+                        </span>
+                      </TableHead>
+                      <TableHead class="cursor-pointer" @click="toggleSort('temperature')">
+                        Temp (°C)
+                        <span v-if="sortColumn === 'temperature'" class="ml-1">
+                          {{ sortDirection === 'asc' ? '↑' : '↓' }}
+                        </span>
+                      </TableHead>
+                      <TableHead class="cursor-pointer" @click="toggleSort('blood_pressure')">
+                        BP
+                        <span v-if="sortColumn === 'blood_pressure'" class="ml-1">
+                          {{ sortDirection === 'asc' ? '↑' : '↓' }}
+                        </span>
+                      </TableHead>
+                      <TableHead class="cursor-pointer" @click="toggleSort('heart_rate')">
+                        Pulse
+                        <span v-if="sortColumn === 'heart_rate'" class="ml-1">
+                          {{ sortDirection === 'asc' ? '↑' : '↓' }}
+                        </span>
+                      </TableHead>
+                      <TableHead class="cursor-pointer" @click="toggleSort('respiratory_rate')">
+                        Resp
+                        <span v-if="sortColumn === 'respiratory_rate'" class="ml-1">
+                          {{ sortDirection === 'asc' ? '↑' : '↓' }}
+                        </span>
+                      </TableHead>
+                      <TableHead class="cursor-pointer" @click="toggleSort('oxygen_saturation')">
+                        SpO₂
+                        <span v-if="sortColumn === 'oxygen_saturation'" class="ml-1">
+                          {{ sortDirection === 'asc' ? '↑' : '↓' }}
+                        </span>
+                      </TableHead>
+                      <TableHead class="cursor-pointer" @click="toggleSort('weight')">
+                        Wt (kg)
+                        <span v-if="sortColumn === 'weight'" class="ml-1">
+                          {{ sortDirection === 'asc' ? '↑' : '↓' }}
+                        </span>
+                      </TableHead>
+                      <TableHead class="cursor-pointer" @click="toggleSort('height')">
+                        Ht (cm)
+                        <span v-if="sortColumn === 'height'" class="ml-1">
+                          {{ sortDirection === 'asc' ? '↑' : '↓' }}
+                        </span>
+                      </TableHead>
+                      <TableHead class="cursor-pointer" @click="toggleSort('fasting')">
+                        Fasting
+                        <span v-if="sortColumn === 'fasting'" class="ml-1">
+                          {{ sortDirection === 'asc' ? '↑' : '↓' }}
+                        </span>
+                      </TableHead>
+                      <TableHead>Patient</TableHead>
+                      <TableHead>Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    <TableRow v-for="item in paginatedVitals" :key="item.id" class="hover:bg-muted/50 transition-colors">
+                      <TableCell>
+                        <input type="checkbox" :checked="selectedIds.includes(item.id)" @change="() => toggleSelect(item.id)" />
+                      </TableCell>
+                      <TableCell>{{ formatDate(item.recorded_at) }}</TableCell>
+                      <TableCell>{{ item.temperature }}</TableCell>
+                      <TableCell>{{ item.blood_pressure }}</TableCell>
+                      <TableCell>{{ item.heart_rate }}</TableCell>
+                      <TableCell>{{ item.respiratory_rate }}</TableCell>
+                      <TableCell>{{ item.oxygen_saturation }}</TableCell>
+                      <TableCell>{{ item.weight }}</TableCell>
+                      <TableCell>{{ item.height }}</TableCell>
+                      <TableCell>{{ item.fasting ? 'Yes' : 'No' }}</TableCell>
+                      <TableCell>{{ item.patient?.name || 'N/A' }}</TableCell>
+                      <TableCell>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="sm" class="h-8 w-8 p-0">
+                              <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" />
+                              </svg>
+                              <span class="sr-only">Open menu</span>
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end" class="w-48">
+                            <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem @click="openViewDialog(item)">View</DropdownMenuItem>
+                            <DropdownMenuItem @click="openEditDialog(item)">Edit</DropdownMenuItem>
+                            <DropdownMenuItem @click="openAssignDialog(item)">Assign</DropdownMenuItem>
+                            <DropdownMenuItem @click="() => handleExportSingle(item.id)">Export</DropdownMenuItem>
+                            <DropdownMenuItem @click="openDeleteDialog(item)" class="text-red-600 focus:text-red-600">Delete</DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </TableCell>
+                    </TableRow>
+                  </TableBody>
+                </Table>
+              </div>
+            </CardContent>
+            <div class="flex flex-col sm:flex-row justify-between items-center p-4 border-t gap-4">
+              <span class="text-sm text-muted-foreground">
+                Showing {{ (page - 1) * pageSize + 1 }} to {{ Math.min(page * pageSize, filteredVitals.length) }} of {{ filteredVitals.length }} vitals
+              </span>
+              <div class="flex gap-2 flex-wrap justify-center">
+                <Button 
+                  :disabled="page === 1" 
+                  variant="outline" 
+                  size="sm" 
+                  @click="page--"
+                >
+                  Prev
+                </Button>
+                <Button
+                  v-for="pageNumber in getPageNumbers()"
+                  :key="pageNumber"
+                  :variant="page === pageNumber ? 'default' : 'outline'"
+                  size="sm"
+                  @click="goToPage(pageNumber)"
+                >
+                  {{ pageNumber }}
+                </Button>
+                <Button 
+                  :disabled="page === totalPages || totalPages === 0" 
+                  variant="outline" 
+                  size="sm" 
+                  @click="page++"
+                >
+                  Next
+                </Button>
               </div>
             </div>
-            <p class="text-blue-100 text-lg">
-              View, edit, assign, delete, and export all vitals in the system.
-            </p>
-          </div>
+          </Card>
         </div>
-        <!-- Search and Actions -->
-        <Card class="rounded-3xl border-0 shadow-xl bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm mb-8">
-          <CardContent class="p-6 flex flex-col md:flex-row md:items-center gap-4">
-            <Input
-              v-model="searchQuery"
-              placeholder="Search by patient, nurse, value, or date..."
-              class="max-w-md"
-            />
-            <Button variant="outline" @click="openExportDialog" class="ml-auto">Export</Button>
-          </CardContent>
-        </Card>
-        <!-- Error Display -->
-        <Card v-if="error" class="rounded-3xl border-0 shadow-xl bg-red-50 dark:bg-red-900/80 mb-6">
-          <CardContent class="p-4 text-center text-red-600">
-            {{ error }}
-          </CardContent>
-        </Card>
-        <!-- Loading State -->
-        <Card v-else-if="loading" class="rounded-3xl border-0 shadow-xl bg-white/80 dark:bg-gray-900/80 mb-6">
-          <CardContent class="p-6 space-y-4">
-            <Skeleton class="h-8 w-full" />
-            <Skeleton class="h-8 w-full" />
-            <Skeleton class="h-8 w-full" />
-          </CardContent>
-        </Card>
-        <!-- Vitals Table -->
-        <Card v-else class="rounded-3xl border-0 shadow-xl bg-white/80 dark:bg-gray-900/80 mb-6">
-          <CardHeader>
-            <CardTitle>All Vitals</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div class="w-full overflow-x-auto">
-              <div v-if="selectedIds.length > 0" class="mb-4 flex gap-2 items-center bg-muted/30 p-2 rounded">
-                <span class="font-medium">Bulk Actions:</span>
-                <Button size="sm" variant="outline" @click="handleBulkExport">Export</Button>
-                <Button size="sm" variant="outline" @click="openBulkAssignDialog">Assign</Button>
-                <Button size="sm" variant="destructive" @click="openBulkDeleteDialog">Delete</Button>
-                <span class="ml-2 text-xs text-muted-foreground">{{ selectedIds.length }} selected</span>
-              </div>
-              <Table class="min-w-[1100px] w-full">
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>
-                      <input type="checkbox" :checked="allSelected" @change="toggleSelectAll" />
-                    </TableHead>
-                    <TableHead class="cursor-pointer" @click="toggleSort('recorded_at')">
-                      Date
-                      <span v-if="sortColumn === 'recorded_at'" class="ml-1">
-                        {{ sortDirection === 'asc' ? '↑' : '↓' }}
-                      </span>
-                    </TableHead>
-                    <TableHead class="cursor-pointer" @click="toggleSort('temperature')">
-                      Temp (°C)
-                      <span v-if="sortColumn === 'temperature'" class="ml-1">
-                        {{ sortDirection === 'asc' ? '↑' : '↓' }}
-                      </span>
-                    </TableHead>
-                    <TableHead class="cursor-pointer" @click="toggleSort('blood_pressure')">
-                      BP
-                      <span v-if="sortColumn === 'blood_pressure'" class="ml-1">
-                        {{ sortDirection === 'asc' ? '↑' : '↓' }}
-                      </span>
-                    </TableHead>
-                    <TableHead class="cursor-pointer" @click="toggleSort('heart_rate')">
-                      Pulse
-                      <span v-if="sortColumn === 'heart_rate'" class="ml-1">
-                        {{ sortDirection === 'asc' ? '↑' : '↓' }}
-                      </span>
-                    </TableHead>
-                    <TableHead class="cursor-pointer" @click="toggleSort('respiratory_rate')">
-                      Resp
-                      <span v-if="sortColumn === 'respiratory_rate'" class="ml-1">
-                        {{ sortDirection === 'asc' ? '↑' : '↓' }}
-                      </span>
-                    </TableHead>
-                    <TableHead class="cursor-pointer" @click="toggleSort('oxygen_saturation')">
-                      SpO₂
-                      <span v-if="sortColumn === 'oxygen_saturation'" class="ml-1">
-                        {{ sortDirection === 'asc' ? '↑' : '↓' }}
-                      </span>
-                    </TableHead>
-                    <TableHead class="cursor-pointer" @click="toggleSort('weight')">
-                      Wt (kg)
-                      <span v-if="sortColumn === 'weight'" class="ml-1">
-                        {{ sortDirection === 'asc' ? '↑' : '↓' }}
-                      </span>
-                    </TableHead>
-                    <TableHead class="cursor-pointer" @click="toggleSort('height')">
-                      Ht (cm)
-                      <span v-if="sortColumn === 'height'" class="ml-1">
-                        {{ sortDirection === 'asc' ? '↑' : '↓' }}
-                      </span>
-                    </TableHead>
-                    <TableHead class="cursor-pointer" @click="toggleSort('fasting')">
-                      Fasting
-                      <span v-if="sortColumn === 'fasting'" class="ml-1">
-                        {{ sortDirection === 'asc' ? '↑' : '↓' }}
-                      </span>
-                    </TableHead>
-                    <TableHead class="cursor-pointer" @click="toggleSort('recorded_by')">
-                      Updated By
-                      <span v-if="sortColumn === 'recorded_by'" class="ml-1">
-                        {{ sortDirection === 'asc' ? '↑' : '↓' }}
-                      </span>
-                    </TableHead>
-                    <TableHead>Patient</TableHead>
-                    <TableHead>Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  <TableRow v-for="item in paginatedVitals" :key="item.id" class="hover:bg-muted/50 transition-colors">
-                    <TableCell>
-                      <input type="checkbox" :checked="selectedIds.includes(item.id)" @change="() => toggleSelect(item.id)" />
-                    </TableCell>
-                    <TableCell>{{ formatDate(item.recorded_at) }}</TableCell>
-                    <TableCell>{{ item.temperature }}</TableCell>
-                    <TableCell>{{ item.blood_pressure }}</TableCell>
-                    <TableCell>{{ item.heart_rate }}</TableCell>
-                    <TableCell>{{ item.respiratory_rate }}</TableCell>
-                    <TableCell>{{ item.oxygen_saturation }}</TableCell>
-                    <TableCell>{{ item.weight }}</TableCell>
-                    <TableCell>{{ item.height }}</TableCell>
-                    <TableCell>{{ item.fasting ? 'Yes' : 'No' }}</TableCell>
-                    <TableCell>{{ item.recorded_by }}</TableCell>
-                    <TableCell>{{ item.patient?.name || 'N/A' }}</TableCell>
-                    <TableCell>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="sm" class="h-8 w-8 p-0">
-                            <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" />
-                            </svg>
-                            <span class="sr-only">Open menu</span>
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" class="w-48">
-                          <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem @click="openEditDialog(item)">Edit</DropdownMenuItem>
-                          <DropdownMenuItem @click="openAssignDialog(item)">Assign</DropdownMenuItem>
-                          <DropdownMenuItem @click="() => handleExportSingle(item.id)">Export</DropdownMenuItem>
-                          <DropdownMenuItem @click="openDeleteDialog(item)" class="text-red-600 focus:text-red-600">Delete</DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </TableCell>
-                  </TableRow>
-                </TableBody>
-              </Table>
-            </div>
-          </CardContent>
-          <div class="flex flex-col sm:flex-row justify-between items-center p-4 border-t gap-4">
-            <span class="text-sm text-muted-foreground">
-              Showing {{ (page - 1) * pageSize + 1 }} to {{ Math.min(page * pageSize, filteredVitals.length) }} of {{ filteredVitals.length }} vitals
-            </span>
-            <div class="flex gap-2 flex-wrap justify-center">
-              <Button 
-                :disabled="page === 1" 
-                variant="outline" 
-                size="sm" 
-                @click="page--"
-              >
-                Prev
-              </Button>
-              <Button
-                v-for="pageNumber in getPageNumbers()"
-                :key="pageNumber"
-                :variant="page === pageNumber ? 'default' : 'outline'"
-                size="sm"
-                @click="goToPage(pageNumber)"
-              >
-                {{ pageNumber }}
-              </Button>
-              <Button 
-                :disabled="page === totalPages || totalPages === 0" 
-                variant="outline" 
-                size="sm" 
-                @click="page++"
-              >
-                Next
-              </Button>
-            </div>
-          </div>
-        </Card>
         <!-- Edit Dialog -->
         <Dialog v-model:open="showEditDialog">
           <DialogContent>
@@ -969,6 +971,278 @@ function closeActivityLog() {
       </div>
       <DialogFooter>
         <Button variant="outline" @click="showSingleExportDialog = false">Close</Button>
+      </DialogFooter>
+    </DialogContent>
+  </Dialog>
+  <!-- Enhanced Landscape Vitals Assessment -->
+  <Dialog v-model:open="showViewDialog">
+    <DialogContent class="max-w-7xl w-full max-h-[95vh] overflow-y-auto">
+      <DialogHeader class="pb-4">
+        <div class="flex items-center gap-4">
+          <div class="w-12 h-12 bg-gradient-to-br from-emerald-400 to-teal-600 rounded-xl flex items-center justify-center shadow-lg">
+            <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+            </svg>
+          </div>
+          <div>
+            <DialogTitle class="text-2xl font-bold bg-gradient-to-r from-emerald-600 to-teal-600 bg-clip-text text-transparent">
+              Vitals Assessment
+            </DialogTitle>
+            <DialogDescription class="text-slate-600 mt-1">
+              Complete vital signs record and measurements
+            </DialogDescription>
+          </div>
+        </div>
+      </DialogHeader>
+
+      <div v-if="viewVitals" class="space-y-6">
+        <!-- Patient & Date Info Header -->
+        <div class="bg-gradient-to-r from-violet-500/10 via-purple-500/10 to-fuchsia-500/10 rounded-2xl p-6 border border-violet-200/50 backdrop-blur-sm">
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div class="flex items-center gap-4">
+              <div class="w-10 h-10 bg-gradient-to-br from-violet-500 to-purple-600 rounded-full flex items-center justify-center shadow-lg">
+                <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
+                </svg>
+              </div>
+              <div>
+                <p class="text-sm font-medium text-violet-600">Patient</p>
+                <p class="font-bold text-slate-900">{{ viewVitals.patient?.name || 'N/A' }}</p>
+              </div>
+            </div>
+            <div class="flex items-center gap-4">
+              <div class="w-10 h-10 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-full flex items-center justify-center shadow-lg">
+                <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                </svg>
+              </div>
+              <div>
+                <p class="text-sm font-medium text-emerald-600">Recorded</p>
+                <p class="font-bold text-slate-900">{{ formatDate(viewVitals.recorded_at) }}</p>
+              </div>
+            </div>
+            <div class="flex items-center gap-4">
+              <div class="w-10 h-10 bg-gradient-to-br from-amber-500 to-orange-600 rounded-full flex items-center justify-center shadow-lg">
+                <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                </svg>
+              </div>
+              <div>
+                <p class="text-sm font-medium text-amber-600">Status</p>
+                <p class="font-bold text-slate-900">Complete</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Primary Vital Signs -->
+        <div>
+          <h3 class="text-xl font-bold text-slate-900 mb-6 flex items-center gap-3">
+            <div class="w-8 h-8 bg-gradient-to-br from-rose-500 to-pink-600 rounded-lg flex items-center justify-center">
+              <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"/>
+              </svg>
+            </div>
+            Primary Vital Signs
+          </h3>
+          <div class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4">
+            <!-- Temperature -->
+            <div class="bg-gradient-to-br from-red-50 to-rose-100 rounded-2xl p-5 border border-red-200/50 shadow-sm hover:shadow-xl transition-all duration-300 hover:scale-105">
+              <div class="flex items-center justify-between mb-3">
+                <div class="w-10 h-10 bg-gradient-to-br from-red-500 to-rose-600 rounded-xl flex items-center justify-center shadow-lg">
+                  <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
+                  </svg>
+                </div>
+              </div>
+              <div>
+                <p class="text-sm font-semibold text-red-700 mb-1">Temperature</p>
+                <p class="text-2xl font-bold text-red-900">{{ viewVitals.temperature }}</p>
+                <p class="text-xs text-red-600">°C / °F</p>
+              </div>
+            </div>
+
+            <!-- Blood Pressure -->
+            <div class="bg-gradient-to-br from-blue-50 to-indigo-100 rounded-2xl p-5 border border-blue-200/50 shadow-sm hover:shadow-xl transition-all duration-300 hover:scale-105">
+              <div class="flex items-center justify-between mb-3">
+                <div class="w-10 h-10 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl flex items-center justify-center shadow-lg">
+                  <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+                  </svg>
+                </div>
+              </div>
+              <div>
+                <p class="text-sm font-semibold text-blue-700 mb-1">Blood Pressure</p>
+                <p class="text-2xl font-bold text-blue-900">{{ viewVitals.blood_pressure }}</p>
+                <p class="text-xs text-blue-600">mmHg</p>
+              </div>
+            </div>
+
+            <!-- Heart Rate -->
+            <div class="bg-gradient-to-br from-pink-50 to-rose-100 rounded-2xl p-5 border border-pink-200/50 shadow-sm hover:shadow-xl transition-all duration-300 hover:scale-105">
+              <div class="flex items-center justify-between mb-3">
+                <div class="w-10 h-10 bg-gradient-to-br from-pink-500 to-rose-600 rounded-xl flex items-center justify-center shadow-lg">
+                  <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"/>
+                  </svg>
+                </div>
+              </div>
+              <div>
+                <p class="text-sm font-semibold text-pink-700 mb-1">Heart Rate</p>
+                <p class="text-2xl font-bold text-pink-900">{{ viewVitals.heart_rate }}</p>
+                <p class="text-xs text-pink-600">BPM</p>
+              </div>
+            </div>
+
+            <!-- Respiratory Rate -->
+            <div class="bg-gradient-to-br from-emerald-50 to-green-100 rounded-2xl p-5 border border-emerald-200/50 shadow-sm hover:shadow-xl transition-all duration-300 hover:scale-105">
+              <div class="flex items-center justify-between mb-3">
+                <div class="w-10 h-10 bg-gradient-to-br from-emerald-500 to-green-600 rounded-xl flex items-center justify-center shadow-lg">
+                  <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3"/>
+                  </svg>
+                </div>
+              </div>
+              <div>
+                <p class="text-sm font-semibold text-emerald-700 mb-1">Respiratory Rate</p>
+                <p class="text-2xl font-bold text-emerald-900">{{ viewVitals.respiratory_rate }}</p>
+                <p class="text-xs text-emerald-600">per minute</p>
+              </div>
+            </div>
+
+            <!-- Oxygen Saturation -->
+            <div class="bg-gradient-to-br from-cyan-50 to-blue-100 rounded-2xl p-5 border border-cyan-200/50 shadow-sm hover:shadow-xl transition-all duration-300 hover:scale-105">
+              <div class="flex items-center justify-between mb-3">
+                <div class="w-10 h-10 bg-gradient-to-br from-cyan-500 to-blue-600 rounded-xl flex items-center justify-center shadow-lg">
+                  <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                  </svg>
+                </div>
+              </div>
+              <div>
+                <p class="text-sm font-semibold text-cyan-700 mb-1">Oxygen Saturation</p>
+                <p class="text-2xl font-bold text-cyan-900">{{ viewVitals.oxygen_saturation }}</p>
+                <p class="text-xs text-cyan-600">%</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Two Column Layout for Physical Measurements and Additional Info -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <!-- Physical Measurements -->
+          <div>
+            <h3 class="text-xl font-bold text-slate-900 mb-6 flex items-center gap-3">
+              <div class="w-8 h-8 bg-gradient-to-br from-purple-500 to-violet-600 rounded-lg flex items-center justify-center">
+                <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
+                </svg>
+              </div>
+              Physical Measurements
+            </h3>
+            <div class="space-y-4">
+              <!-- Weight -->
+              <div class="bg-gradient-to-br from-purple-50 to-violet-100 rounded-2xl p-6 border border-purple-200/50 shadow-sm hover:shadow-lg transition-all duration-300">
+                <div class="flex items-center gap-4">
+                  <div class="w-12 h-12 bg-gradient-to-br from-purple-500 to-violet-600 rounded-xl flex items-center justify-center shadow-lg">
+                    <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 6l3 1m0 0l-3 9a5.002 5.002 0 006.001 0M6 7l3 9M6 7l6-2m6 2l3-1m-3 1l-3 9a5.002 5.002 0 006.001 0M18 7l3 9m-3-9l-6-2m0-2v2m0 16V5m0 16l3-1m-3 1l-3-1"/>
+                    </svg>
+                  </div>
+                  <div class="flex-1">
+                    <p class="text-sm font-semibold text-purple-700 mb-1">Weight</p>
+                    <p class="text-3xl font-bold text-purple-900">{{ viewVitals.weight }}</p>
+                    <p class="text-sm text-purple-600">kg / lbs</p>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Height -->
+              <div class="bg-gradient-to-br from-indigo-50 to-blue-100 rounded-2xl p-6 border border-indigo-200/50 shadow-sm hover:shadow-lg transition-all duration-300">
+                <div class="flex items-center gap-4">
+                  <div class="w-12 h-12 bg-gradient-to-br from-indigo-500 to-blue-600 rounded-xl flex items-center justify-center shadow-lg">
+                    <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21l3-3m-3 3l-3-3m3 3V9m0 0L4 6m3 3l3-3M4 6h16M7 3l3 3m-3-3l-3 3m3-3v12"/>
+                    </svg>
+                  </div>
+                  <div class="flex-1">
+                    <p class="text-sm font-semibold text-indigo-700 mb-1">Height</p>
+                    <p class="text-3xl font-bold text-indigo-900">{{ viewVitals.height }}</p>
+                    <p class="text-sm text-indigo-600">cm / ft</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Additional Information -->
+          <div>
+            <h3 class="text-xl font-bold text-slate-900 mb-6 flex items-center gap-3">
+              <div class="w-8 h-8 bg-gradient-to-br from-amber-500 to-orange-600 rounded-lg flex items-center justify-center">
+                <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                </svg>
+              </div>
+              Additional Information
+            </h3>
+            <div class="space-y-4">
+              <!-- Fasting Status -->
+              <div class="bg-gradient-to-br from-amber-50 to-yellow-100 rounded-2xl p-6 border border-amber-200/50 shadow-sm hover:shadow-lg transition-all duration-300">
+                <div class="flex items-center gap-4">
+                  <div class="w-12 h-12 bg-gradient-to-br from-amber-500 to-yellow-600 rounded-xl flex items-center justify-center shadow-lg">
+                    <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                    </svg>
+                  </div>
+                  <div class="flex-1">
+                    <p class="text-sm font-semibold text-amber-700 mb-1">Fasting Status</p>
+                    <p class="text-3xl font-bold text-amber-900">{{ viewVitals.fasting ? 'Yes' : 'No' }}</p>
+                    <p class="text-sm text-amber-600">{{ viewVitals.fasting ? 'Patient was fasting' : 'Patient was not fasting' }}</p>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Recorded By -->
+              <div class="bg-gradient-to-br from-teal-50 to-cyan-100 rounded-2xl p-6 border border-teal-200/50 shadow-sm hover:shadow-lg transition-all duration-300">
+                <div class="flex items-center gap-4">
+                  <div class="w-12 h-12 bg-gradient-to-br from-teal-500 to-cyan-600 rounded-xl flex items-center justify-center shadow-lg">
+                    <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
+                    </svg>
+                  </div>
+                  <div class="flex-1">
+                    <p class="text-sm font-semibold text-teal-700 mb-1">Recorded By</p>
+                    <p class="text-3xl font-bold text-teal-900">{{ viewVitals.recorded_by }}</p>
+                    <p class="text-sm text-teal-600">Healthcare Professional</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <DialogFooter class="mt-8 pt-6 border-t border-slate-200">
+        <div class="flex gap-3 w-full">
+          <Button variant="outline" @click="showViewDialog = false" class="flex-1 h-12 text-slate-700 border-slate-300 hover:bg-slate-50">
+            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+            </svg>
+            Close
+          </Button>
+          <Button class="flex-1 h-12 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white shadow-lg">
+            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/>
+            </svg>
+            Print Report
+          </Button>
+          <Button variant="secondary" class="flex-1 h-12 bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white shadow-lg">
+            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.367 2.684 3 3 0 00-5.367-2.684z"/>
+            </svg>
+            Share
+          </Button>
+        </div>
       </DialogFooter>
     </DialogContent>
   </Dialog>

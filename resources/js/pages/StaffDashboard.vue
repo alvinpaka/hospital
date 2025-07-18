@@ -89,7 +89,7 @@ function getCurrentDate() {
                                 </div>
                             </div>
                             <div class="flex items-center gap-3">
-                                <Badge class="bg-white bg-opacity-20 text-white border-white border-opacity-30 text-lg px-4 py-2">
+                                <Badge class="bg-gray-200 dark:bg-gray-700 text-black dark:text-white border border-gray-400 dark:border-gray-600 text-lg px-4 py-2">
                                     {{ user?.role === 'doctor' ? '👨‍⚕️ Doctor' : '👩‍⚕️ Nurse' }}
                                 </Badge>
                             </div>
