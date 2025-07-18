@@ -4,7 +4,6 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import Input from '@/components/ui/input/Input.vue';
 import { Button } from '@/components/ui/button';
 import { usePage } from '@inertiajs/vue3';
-import type { Ref } from 'vue';
 import type { AppPageProps } from '@/types';
 import { useNotificationStore } from '@/stores/notification';
 import { storeToRefs } from 'pinia';
@@ -342,7 +341,7 @@ watch(showChat, async (val) => {
     if (receiverId.value) {
       try {
         await axios.post('/api/messages/mark-read', { with_user_id: receiverId.value });
-      } catch (e) {
+      } catch {
         // Optionally handle error
       }
     }

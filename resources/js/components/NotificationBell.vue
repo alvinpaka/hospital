@@ -9,20 +9,6 @@ import dayjs from 'dayjs';
 import relativeTime from 'dayjs/plugin/relativeTime';
 dayjs.extend(relativeTime);
 
-interface NotificationData {
-  id: string;
-  type: string;
-  read_at: string | null;
-  created_at: string;
-  data: {
-    message: string;
-    body?: string;
-    sender_id?: number;
-    receiver_id?: number;
-    url?: string | null;
-  };
-}
-
 const notificationStore = useNotificationStore();
 const { messageNotifications, unreadMessageCount } = storeToRefs(notificationStore);
 const showDropdown = ref(false);

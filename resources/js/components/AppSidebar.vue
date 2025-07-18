@@ -6,14 +6,10 @@ import { type NavItem } from '@/types';
 import { Link, usePage } from '@inertiajs/vue3';
 import { Folder, LayoutGrid, Calendar, FileText, Users, DollarSign, Stethoscope, Activity } from 'lucide-vue-next';
 import AppLogo from './AppLogo.vue';
-import { usePrescriptionBlink } from '@/composables/usePrescriptionBlink';
-import { useAppointmentBlink } from '@/composables/useAppointmentBlink';
 import AppearanceTabs from '@/components/AppearanceTabs.vue';
 
 const page = usePage();
 const user = page.props.auth.user;
-const { prescriptionBlink } = usePrescriptionBlink();
-const { appointmentBlink } = useAppointmentBlink();
 
 const patientNavItems: NavItem[] = [
     {
