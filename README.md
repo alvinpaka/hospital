@@ -2,7 +2,7 @@
 
 A modern, full-featured hospital management system built with Laravel (PHP backend) and Vue 3 (frontend) using Inertia.js. The project features a card-based, gradient-rich UI, real-time notifications, and robust role-based access for admins, staff, and doctors.
 
-## Featuresb<img width="1440" height="812" alt="Screenshot 2025-07-22 at 14 26 38" src="https://github.com/user-attachments/assets/62f7e9ee-b658-48a8-9ad5-621d2194bd2a" />
+## Features<img width="1440" height="812" alt="Screenshot 2025-07-22 at 14 26 38" src="https://github.com/user-attachments/assets/62f7e9ee-b658-48a8-9ad5-621d2194bd2a" />
 <img width="1440" height="812" alt="Screenshot 2025-07-22 at 14 26 54" src="https://github.com/user-attachments/assets/3c80bc6d-0946-4303-848d-f6f6318c09e3" />
 <img width="1440" height="811" alt="Screenshot 2025-07-22 at 14 27 09" src="https://github.com/user-attachments/assets/9880b6c4-cdd2-4c08-816d-a228c4300fdc" />
 <img width="1440" height="812" alt="Screenshot 2025-07-22 at 14 27 41" src="https://github.com/user-attachments/assets/0b18b931-8f99-476d-88d1-0d10c384c3ab" />
